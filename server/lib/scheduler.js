@@ -44,12 +44,13 @@ export async function monitorAICost() {
     });
   }
 
-  // 异常用户
+  // 异常用户（oracle_messages 表无 user_id 列，靠 JOIN oracle_sessions）
   const abnormalUsers = db.prepare(`
-    SELECT user_id, COUNT(*) AS calls, COALESCE(SUM(cost_cny), 0) AS cost
-    FROM oracle_messages
-    WHERE created_at > ?
-    GROUP BY user_id
+    SELECT s.user_id, COUNT(*) AS calls, COALESCE(SUM(m.cost_cny), 0) AS cost
+    FROM oracle_messages m
+    JOIN oracle_sessions s ON s.id = m.session_id
+    WHERE m.created_at > ?
+    GROUP BY s.user_id
     HAVING calls > ?
   `).all(todayStart, AI_USER_DAILY_LIMIT);
 

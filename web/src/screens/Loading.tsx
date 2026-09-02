@@ -16,6 +16,8 @@ export default function Loading() {
   const [pollCount, setPollCount] = useState(0);
   const [status, setStatus] = useState<string>('pending');
   const [error, setError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const pollRef = useRef<any>(null);
 
   useEffect(() => {
@@ -30,6 +32,10 @@ export default function Loading() {
         if (res.status === 'paid' || res.already || res.status === 'interpreted') {
           clearInterval(pollRef.current);
           navigate(`/reading/${orderId}`);
+        } else if (res.status === 'paid' && res.ai_error) {
+          // Phase 2.11: AI 失败但已付款
+          clearInterval(pollRef.current);
+          setAiError(res.ai_error);
         } else if (count >= 72) {
           clearInterval(pollRef.current);
           setError('轮询超时');
@@ -59,6 +65,31 @@ export default function Loading() {
             <div className="text-secondary text-sm">{error}</div>
             <Button onClick={() => navigate('/spreads')} variant="secondary" size="md" className="mt-md">
               返回牌阵
+            </Button>
+          </div>
+        )}
+
+        {aiError && (
+          <div className="mt-md p-md bg-secondary/10 border border-secondary/20 rounded-lg">
+            <div className="text-sm text-secondary font-medium mb-sm">解读生成失败</div>
+            <div className="text-xs text-fg-secondary mb-md">{aiError}</div>
+            <Button
+              onClick={async () => {
+                setRetrying(true);
+                try {
+                  await ordersApi.interpret(orderId!);
+                  navigate(`/reading/${orderId}`);
+                } catch (e: any) {
+                  setAiError(e.message || '重试失败');
+                } finally {
+                  setRetrying(false);
+                }
+              }}
+              variant="primary"
+              size="md"
+              disabled={retrying}
+            >
+              {retrying ? '重新生成中…' : '重新生成解读'}
             </Button>
           </div>
         )}

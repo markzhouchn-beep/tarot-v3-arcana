@@ -18,7 +18,7 @@
 NODE_ENV=production
 PORT=3003
 FRONTEND_URL=https://tarot-v3.layershop.store
-DATABASE_PATH=/var/www/tarot-v3/server/data/tarot_v3.db
+DB_PATH=/var/www/tarot-v3/server/data/tarot_v3.db
 
 # Session
 SESSION_SECRET=<64 位随机字符串>

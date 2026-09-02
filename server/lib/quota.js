@@ -155,9 +155,45 @@ async function reconcileLoop() {
 }
 
 async function reconcileSingleOrder(order) {
-  // ⚠️ 此函数 Phase 0 是占位（不动真钱），由 routes/afdian-webhook.js 的幂等逻辑兜底
-  // 真实实现：调 queryOrder → 命中 → 标 paid + 触发 AI 解读
-  return { skipped: true, reason: 'phase_0_placeholder' };
+  try {
+    // 1. 查爱发电订单列表（最近 50 条），按 out_trade_no / custom_order_id 匹配
+    const result = await queryOrder({ page: 1, perPage: 100 });
+    const list = result.list || [];
+    const hit = list.find(
+      (o) =>
+        (order.afdian_out_trade_no && o.out_trade_no === order.afdian_out_trade_no) ||
+        o.custom_order_id === order.id
+    );
+
+    if (!hit) return { ok: false, reason: 'not_found' };
+    // status: 2=paid
+    if (hit.status !== 2) return { ok: false, reason: `status=${hit.status}` };
+
+    // 2. 标 paid（用幂等守护：只更新 status=pending 的）
+    const now = Date.now();
+    const updateResult = db.prepare(`
+      UPDATE orders
+      SET status = 'paid', paid_at = ?, paid_amount = ?, updated_at = ?
+      WHERE id = ? AND status = 'pending'
+    `).run(now, parseFloat(hit.total_amount) || null, now, order.id);
+
+    if (updateResult.changes === 0) {
+      // 已被 webhook 抢先标了
+      return { ok: true, reason: 'already_paid' };
+    }
+
+    // 3. 触发 AI 解读（异步、不阻塞）
+    const { triggerAIReading } = await import('../routes/orders.js');
+    triggerAIReading(order.id).catch((err) =>
+      console.error(`[reconcile] trigger AI error order=${order.id}:`, err.message)
+    );
+
+    console.log(`[reconcile] ✅ order=${order.id} 标 paid 成功 amount=${hit.total_amount}`);
+    return { ok: true, paid_amount: hit.total_amount };
+  } catch (err) {
+    console.error(`[reconcile] order=${order.id} 异常:`, err.message);
+    return { ok: false, error: err.message };
+  }
 }
 
 export default {
@@ -169,4 +205,5 @@ export default {
   checkCooldown,
   startReconcileLoop,
   stopReconcileLoop,
+  reconcileSingleOrder,
 };

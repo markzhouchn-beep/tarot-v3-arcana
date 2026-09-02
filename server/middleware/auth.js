@@ -6,6 +6,7 @@
 
 import db from '../db.js';
 import { config } from '../lib/config.js';
+import bcrypt from 'bcryptjs';
 
 /**
  * 必需登录中间件
@@ -98,8 +99,7 @@ export function requireAdmin(req, res, next) {
   // 2. 优先用 hash 验证
   const hash = config.ADMIN_PASSWORD_HASH;
   if (hash && hash.startsWith('$2')) {
-    // bcrypt hash
-    const bcrypt = require('bcryptjs');
+    // bcrypt hash（顶部 import，不用函数内 require）
     if (!bcrypt.compareSync(pass, hash)) {
       return res.status(401).json({ error: 'ADMIN_AUTH_FAILED' });
     }

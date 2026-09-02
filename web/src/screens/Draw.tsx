@@ -232,7 +232,7 @@ function FlippedCards({ cards }: { cards: Array<{ id: string; name: string; orie
             card={{
               id: c.id,
               name: c.name,
-              orientation: c.orientation === '正位' ? 'upright' : 'reversed',
+              orientation: c.orientation === 'reversed' ? 'reversed' : 'upright',
             }}
             size={cards.length > 3 ? 'sm' : 'md'}
           />

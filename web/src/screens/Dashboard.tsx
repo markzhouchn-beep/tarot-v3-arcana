@@ -68,7 +68,7 @@ export default function Dashboard() {
       .then(d => {
         setUser(d.user);
         // 拉订单历史
-        return ordersApi.list({ user_id: d.user?.id }).catch(() => ({ orders: [] }));
+        return ordersApi.list().catch(() => ({ orders: [] }));
       })
       .then((data: any) => {
         setOrders(data.orders || []);

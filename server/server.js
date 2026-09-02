@@ -41,18 +41,28 @@ const PORT = config.PORT;
 // ===== 中间件 =====
 app.use(cors({
   origin: (origin, cb) => {
-    // 允许同源 + 局域网访问（手机/其他设备预览）
-    const allowed = [
-      config.FRONTEND_URL,
-      `http://${config.LAN_HOST}:5175`,
-      `http://${config.LAN_HOST}:3003`,
-      'http://localhost:5175',
-      'http://localhost:3003',
-    ];
-    if (!origin || allowed.some(u => origin.startsWith(u.replace(/\/$/, '')))) {
+    // 生产环境白名单：仅 FRONTEND_URL
+    // 开发环境：localhost + LAN_HOST
+    const allowed = [config.FRONTEND_URL];
+    if (config.NODE_ENV !== 'production') {
+      allowed.push(
+        'http://localhost:5175',
+        'http://localhost:3003',
+        `http://${config.LAN_HOST}:5175`,
+        `http://${config.LAN_HOST}:3003`,
+      );
+    }
+    // 无 origin（curl / 服务器调用）一律放行；有 origin 则必须严格匹配
+    if (!origin) {
+      cb(null, true);
+      return;
+    }
+    const ok = allowed.some(u => origin === u || origin.startsWith(u.replace(/\/$/, '') + '/') || origin === u.replace(/\/$/, ''));
+    if (ok) {
       cb(null, true);
     } else {
-      cb(null, true);  // 局域网开发放宽，实际生产收紧
+      console.warn(`[cors] origin rejected: ${origin}`);
+      cb(new Error(`CORS: origin ${origin} not allowed`), false);
     }
   },
   credentials: true,

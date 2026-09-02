@@ -7,7 +7,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import db from '../db.js';
 import { config } from '../lib/config.js';
-import { optionalAuth } from '../middleware/auth.js';
+import { optionalAuth, requireAuth } from '../middleware/auth.js';
 import { buildProductPayUrl, queryOrder } from '../lib/afdian.js';
 import { drawCards } from '../lib/tarot-knowledge.js';
 import { callAI } from '../lib/ai.js';
@@ -39,14 +39,24 @@ router.post('/create', optionalAuth, (req, res) => {
     const amount = tierInfo.amount;
     const skuId = tierInfo.sku || tierInfo.afdian_type === 'sku' ? tierInfo.sku : null;
 
+    // 根据 tier 推断 spread_type（Phase 2.10 修复：前端 Checkout.tsx 可能漏传 / 传错）
+    // lite→single, classic→three, deep→ten
+    const SPREAD_TYPE_MAP = {
+      lite: 'single', single: 'single',
+      classic: 'three', three: 'three',
+      deep: 'ten', ten: 'ten',
+    };
+    const inferredSpreadType = SPREAD_TYPE_MAP[tier] || spread_type || 'single';
+
     const orderId = crypto.randomUUID();
     const outTradeNo = `arc-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const isTest = device_id?.startsWith('test-') ? 1 : 0;
 
     // 占位：抽牌（实际生成在 payment 后）
-    const cardsCount = tier === 'single' || tier === 'lite' ? 1
-                     : tier === 'three' || tier === 'classic' ? 3
-                     : 10;
+    const cardsCount = inferredSpreadType === 'single' ? 1
+                     : inferredSpreadType === 'three' ? 3
+                     : inferredSpreadType === 'ten' ? 10
+                     : 1;
     const cards = drawCards(cardsCount);
 
     // 🔥 会员检查：silver/gold 会员跳过支付，直接标记为 paid
@@ -75,7 +85,7 @@ router.post('/create', optionalAuth, (req, res) => {
       orderId,
       req.user?.id || null,
       tier,
-      spread_type || null,
+      inferredSpreadType,
       spread_theme || null,
       question || '',
       JSON.stringify(cards),
@@ -164,28 +174,15 @@ router.get('/:id', (req, res) => {
 
 /**
  * v3.0.1 补充：订单列表（Dashboard）
- * GET /api/orders?user_id=xxx&limit=20
+ * GET /api/orders?limit=20
+ * 鉴权：必须登录。强制用 req.user.id，拉自己订单（不允许跨用户查）。
  */
-router.get('/', (req, res) => {
+router.get('/', requireAuth, (req, res) => {
   try {
+    const userId = req.user.id;
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    let sql = `SELECT id, question, status, amount, spread_type, cards_json, created_at FROM orders`;
-    const params = [];
-    const where = [];
-
-    if (req.query.user_id) {
-      where.push('user_id = ?');
-      params.push(req.query.user_id);
-    } else if (req.query.device_id) {
-      where.push('device_id = ?');
-      params.push(req.query.device_id);
-    }
-
-    if (where.length > 0) {
-      sql += ` WHERE ${where.join(' AND ')}`;
-    }
-    sql += ` ORDER BY created_at DESC LIMIT ?`;
-    params.push(limit);
+    const sql = `SELECT id, question, status, amount, spread_type, cards_json, paid_amount, created_at, paid_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
+    const params = [userId, limit];
 
     const rows = db.prepare(sql).all(...params);
 
@@ -291,7 +288,8 @@ router.post('/:id/reconcile', async (req, res) => {
       return res.status(404).json({ error: 'ORDER_NOT_FOUND' });
     }
     if (order.status === 'paid' || order.status === 'interpreted') {
-      return res.json({ ok: true, status: order.status, already: true });
+      // 已付款，但可能 AI 失败（ai_error 有值）
+      return res.json({ ok: true, status: order.status, already: true, ai_error: order.ai_error || null });
     }
     if (!order.afdian_out_trade_no) {
       return res.status(400).json({
@@ -363,19 +361,37 @@ router.post('/:id/reconcile', async (req, res) => {
 export async function triggerAIReading(orderId) {
   try {
     const order = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(orderId);
-    if (!order || order.status !== 'paid') return { ok: false };
+    if (!order || order.status !== 'paid') return { ok: false, reason: 'order_not_paid' };
 
     const cards = JSON.parse(order.cards_json || '[]');
 
-    const { content, tokensUsed } = await callAI({
-      systemPrompt: READING_SYSTEM_PROMPT,
-      userPrompt: buildReadingPrompt({
-        spreadType: order.spread_type || 'single',
-        theme: order.spread_theme,
-        cards,
-        question: order.question,
-      }),
-    });
+    let content, tokensUsed, cost;
+    try {
+      const aiResult = await callAI({
+        systemPrompt: READING_SYSTEM_PROMPT,
+        userPrompt: buildReadingPrompt({
+          spreadType: order.spread_type || 'single',
+          theme: order.spread_theme,
+          cards,
+          question: order.question,
+        }),
+      });
+      content = aiResult.content;
+      tokensUsed = aiResult.tokensUsed || 0;
+      cost = aiResult.cost || 0;
+      if (!content || content.trim().length === 0) {
+        throw new Error('AI 返回空内容');
+      }
+    } catch (aiErr) {
+      // Phase 2.11: AI 失败 不标 interpreted，前端可点「重试」
+      console.error(`[triggerAIReading] ❌ order=${orderId} AI 失败:`, aiErr.message);
+      db.prepare(`UPDATE orders SET ai_error = ?, updated_at = ? WHERE id = ?`).run(
+        aiErr.message?.slice(0, 500) || 'AI 失败',
+        Date.now(),
+        orderId,
+      );
+      return { ok: false, reason: 'ai_failed', error: aiErr.message };
+    }
 
     // 解析 sections + summary（供 Oracle 追问复用）
     const parsed = parseReading(content);

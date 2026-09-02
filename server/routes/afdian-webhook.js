@@ -75,6 +75,17 @@ router.post('/webhook', async (req, res) => {
       return res.status(401).json({ ec: 401, em: 'invalid_signature' });
     }
 
+    // 1a. 简易验签（防住 MD5 密钥泄漏后的二次攻击）
+    // 在爱发电后台 → 商品订单 → 备注里填 WEBHOOK_SECRET（仅 Mark 知道）
+    // 生产环境必须配置；开发环境跳过
+    if (process.env.NODE_ENV === 'production' && process.env.WEBHOOK_SECRET) {
+      const remark = order?.remark || payload?.remark;
+      if (remark !== process.env.WEBHOOK_SECRET) {
+        console.error('[afdian-webhook] ❌ remark 验证失败（简易验签）');
+        return res.status(403).json({ ec: 403, em: 'invalid_secret' });
+      }
+    }
+
     const { out_trade_no, custom_order_id, product_type, total_amount, status, plan_id, sku_id, pay_month } = order;
 
     // 2. 幂等检查

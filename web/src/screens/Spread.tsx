@@ -220,7 +220,8 @@ function CardWithPosition({
   position: string;
   blurred: boolean;
 }) {
-  const orientation = card.orientation === '正位' ? 'upright' : 'reversed';
+  // 后端返英文 'upright' | 'reversed'（tarot-knowledge.js:214），不要和中文 '正位' 比较
+  const orientation = card.orientation === 'reversed' ? 'reversed' : 'upright';
   const keywords = orientation === 'upright' ? card.keywords_up : card.keywords_down;
 
   return (
