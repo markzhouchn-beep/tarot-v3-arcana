@@ -1,0 +1,137 @@
+/* ============================================================
+   ARCANA ai · v3.0 · 完整 v2.0 美术 tokens（v3.0 沿用）
+   Mystical Vintage Dark · 收紧字体 + 强化神秘感
+   ============================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+
+  body {
+    @apply bg-bg-canvas text-fg font-body;
+    font-feature-settings: 'kern', 'liga';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* 暗底星点纹理 */
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(168, 58, 58, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(200, 152, 91, 0.06) 0%, transparent 50%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><circle cx='10' cy='30' r='0.5' fill='%23c8985b' opacity='0.15'/><circle cx='80' cy='60' r='0.4' fill='%23c8985b' opacity='0.1'/><circle cx='150' cy='20' r='0.5' fill='%23c8985b' opacity='0.12'/><circle cx='40' cy='150' r='0.4' fill='%23c8985b' opacity='0.08'/><circle cx='180' cy='180' r='0.5' fill='%23c8985b' opacity='0.15'/><circle cx='120' cy='100' r='0.3' fill='%23c8985b' opacity='0.1'/></svg>");
+    background-attachment: fixed;
+    background-repeat: no-repeat, no-repeat, repeat;
+  }
+
+  h1, h2, h3 {
+    @apply font-display text-fg;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+  }
+
+  /* 装饰小标 */
+  .caps {
+    @apply font-caps uppercase tracking-[0.32em] text-2xs text-fg-faint;
+    font-size: 10px;
+  }
+
+  /* 数字强调 */
+  .num-display {
+    @apply font-display tabular-nums;
+    font-feature-settings: 'lnum', 'tnum';
+  }
+
+  /* 主滚动条 */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(200, 152, 91, 0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(200, 152, 91, 0.4); }
+}
+
+@layer components {
+  /* 卡片容器（暗底面板） */
+  .panel {
+    @apply bg-bg-panel border border-border rounded-md shadow-md;
+  }
+
+  /* 容器卡片（540px 居中） */
+  .container-card {
+    @apply mx-auto px-md w-full;
+    max-width: 540px;
+  }
+
+  /* 装饰按钮 · 主行动 */
+  .btn-primary {
+    @apply px-xl py-md font-caps uppercase tracking-[0.18em] text-xs
+           bg-primary text-occult border border-primary
+           transition-all duration-fast ease-default
+           hover:bg-primary-light hover:shadow-glow-gold
+           active:scale-[0.98];
+  }
+
+  /* 次要按钮 */
+  .btn-secondary {
+    @apply px-xl py-md font-caps uppercase tracking-[0.18em] text-xs
+           bg-transparent text-primary border border-border-strong
+           transition-all duration-fast ease-default
+           hover:bg-bg-occult hover:border-primary-light;
+  }
+
+  /* 危险按钮 */
+  .btn-danger {
+    @apply px-xl py-md font-caps uppercase tracking-[0.18em] text-xs
+           bg-transparent text-secondary border border-secondary
+           transition-all duration-fast ease-default
+           hover:bg-secondary-dim/20;
+  }
+
+  /* 图标按钮 */
+  .icon-btn {
+    @apply w-10 h-10 flex items-center justify-center
+           text-fg-secondary hover:text-primary
+           transition-colors duration-fast;
+  }
+
+  /* 输入框 */
+  .input {
+    @apply w-full bg-bg-occult border border-border
+           px-md py-md text-md text-fg placeholder:text-fg-faint
+           focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30
+           transition-all duration-fast;
+  }
+
+  /* 装饰分隔线 */
+  .divider-ornate {
+    @apply relative my-lg text-center;
+    &::before, &::after {
+      content: '';
+      @apply absolute top-1/2 w-1/3 h-px bg-border;
+    }
+    &::before { left: 0; }
+    &::after { right: 0; }
+  }
+}
+
+@layer utilities {
+  /* 渐变文字 */
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #e0b878 0%, #c8985b 50%, #8c6e3f 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* 锁定遮罩（v3.0 预览锁） */
+  .lock-overlay {
+    @apply absolute inset-0 flex flex-col items-center justify-center
+           bg-occult/85 backdrop-blur-sm
+           text-center p-md;
+  }
+
+  /* 呼吸光球 · Hero 背景 */
+  .orb {
+    @apply absolute rounded-full pointer-events-none;
+    filter: blur(60px);
+  }
+}

@@ -1,0 +1,11 @@
+import Database from 'better-sqlite3';
+const db = new Database('./data/tarot_v3.db');
+console.log('=== 表清单 ===');
+const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
+tables.forEach(t => console.log(' -', t.name));
+console.log('');
+console.log('=== users 表 schema ===');
+console.log(db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get()?.sql || '不存在');
+console.log('');
+console.log('=== orders schema ===');
+console.log(db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='orders'").get()?.sql?.slice(0, 500));

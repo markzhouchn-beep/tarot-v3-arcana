@@ -1,0 +1,24 @@
+{
+  "name": "tarot-v3-server",
+  "version": "3.0.0",
+  "description": "ARCANA ai · 塔罗 v3.0 后端（独立版本）",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "init-db": "bash ../scripts/init_db.sh",
+    "test-e2e": "bash ../scripts/test_e2e.sh"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^13.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "nanoid": "^5.0.9",
+    "nodemailer": "^9.0.5"
+  }
+}

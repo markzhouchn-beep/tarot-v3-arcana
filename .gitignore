@@ -1,0 +1,72 @@
+# ============================================================
+# .gitignore · v3.0 公开仓库脱敏配置
+# ============================================================
+
+# 依赖
+node_modules/
+**/node_modules/
+
+# 数据（数据库 + 用户数据）
+data/*.db
+data/*.db-*
+server/data/
+server/uploads/
+
+# 环境变量（绝密）
+.env
+.env.local
+.env.production
+.env.development
+**/.env
+**/.env.local
+**/.env.production
+
+# 构建产物
+web/dist/
+server/dist/
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pm2-*.log
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# 测试输出
+coverage/
+.nyc_output/
+
+# 本地临时文件
+/tmp/
+.cache/
+.vite/
+
+# 备份 / 归档
+_archive/
+*.bak
+*.tar.gz
+*.zip
+
+# Secrets（双重保险：除了 .gitignore 外，扫描代码也要确保）
+**/secrets.json
+**/credentials.json
+**/*-credentials.json
+
+# OS files
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# 不要忽略 .gitkeep
+!.gitkeep
+!data/.gitkeep
