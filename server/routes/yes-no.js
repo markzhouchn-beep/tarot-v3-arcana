@@ -42,7 +42,7 @@ router.get('/quota', optionalAuth, (req, res) => {
       used = row?.cnt || 0;
     }
 
-    const limitMap = { guest: 1, registered: 1, silver: 3, gold: 999 };
+    const limitMap = { guest: 1, registered: 3, silver: 10, gold: 999 };
     const limit = limitMap[tier] || 1;
 
     res.json({
@@ -73,7 +73,7 @@ router.post('/draw', optionalAuth, (req, res) => {
 
     // 配额检查
     const tier = req.user?.tier || 'guest';
-    const limitMap = { guest: 1, registered: 1, silver: 3, gold: 999 };
+    const limitMap = { guest: 1, registered: 3, silver: 10, gold: 999 };
     const limit = limitMap[tier] || 1;
 
     // 简化：直接查今日记录数

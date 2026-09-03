@@ -14,8 +14,8 @@ export const QUOTA_LIMITS = {
   oracle_self: { guest: 0, registered: 5, silver: 15, gold: 30 },
   // preset_question 预设问题（访客 3/日，其他无限 = 999）
   preset_question: { guest: 3, registered: 999, silver: 999, gold: 999 },
-  // free_draw Yes/No 单卡（访客 1/日，银月 3/日，金月无限）
-  free_draw: { guest: 1, registered: 1, silver: 3, gold: 999 },
+  // free_draw Yes/No 单卡（访客 1/日 + 注册 3/日 + 银月 10/日 + 金月 999/日）
+  free_draw: { guest: 1, registered: 3, silver: 10, gold: 999 },
   // oracle_free 注册用户 AI 基础解读（占位）
   oracle_free: { guest: 0, registered: 5, silver: 15, gold: 30 },
 };

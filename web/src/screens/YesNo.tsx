@@ -10,7 +10,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
 import { CardBack } from '../components/CardBack';
 import { CardFace } from '../components/CardFace';
-import { yesNoApi } from '../lib/api';
+import { yesNoApi, authApi } from '../lib/api';
 
 interface DrawResult {
   ok: boolean;
@@ -49,6 +49,7 @@ export default function YesNo() {
   const navigate = useNavigate();
   const [deviceId] = useState(getDeviceId());
   const [quota, setQuota] = useState<Quota | null>(null);
+  const [user, setUser] = useState<{ tier?: string } | null>(null);
   const [question, setQuestion] = useState('');
   const [result, setResult] = useState<DrawResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,6 +57,8 @@ export default function YesNo() {
 
   useEffect(() => {
     refreshQuota();
+    // 获取用户 tier（仅用于决定是否提示注册）
+    authApi.me().then((d: any) => setUser(d?.user || null)).catch(() => setUser(null));
   }, []);
 
   const refreshQuota = () => {
@@ -70,7 +73,14 @@ export default function YesNo() {
       return;
     }
     if (quota && quota.remaining <= 0) {
-      setError('今日次数已用完，登录或订阅会员可解锁更多');
+      const tier = user?.tier || 'guest';
+      const msg = {
+        guest:     '今日 1 次已用完 · 注册登录可解锁 3 次/日',
+        registered: '今日 3 次已用完 · 开通银月可解锁 10 次/日',
+        silver:    '今日 10 次已用完 · 升级金月可解锁无限',
+        gold:      '今日次数已用完 · 请明天再试',
+      }[tier] || '今日次数已用完';
+      setError(msg);
       return;
     }
     setError(null);
@@ -107,6 +117,34 @@ export default function YesNo() {
       {quota && (
         <div className="caps text-fg-faint text-center mb-lg">
           今日剩余 <span className="text-primary">{quota.remaining}</span> / {quota.limit} 次
+        </div>
+      )}
+
+      {/* 用完提示横幅：引导升级 */}
+      {quota && quota.remaining <= 0 && (
+        <div className="panel p-md border-primary/40 bg-bg-occult text-center mb-lg">
+          <div className="caps text-primary mb-xs">— 今日次数已用完 —</div>
+          <p className="text-sm text-fg-secondary mb-md leading-relaxed">
+            {user?.tier === 'guest' && '注册登录可解锁 3 次/日'}
+            {user?.tier === 'registered' && '开通银月可解锁 10 次/日'}
+            {user?.tier === 'silver' && '升级金月可解锁无限'}
+            {(!user || user?.tier === 'gold') && '请明天再来'}
+          </p>
+          {(user?.tier === 'guest' || !user) && (
+            <Button onClick={() => navigate('/auth')} variant="primary" size="sm" fullWidth>
+              ✦ 注册登录解锁更多
+            </Button>
+          )}
+          {user?.tier === 'registered' && (
+            <Button onClick={() => navigate('/membership')} variant="primary" size="sm" fullWidth>
+              ✦ 开通银月会员
+            </Button>
+          )}
+          {user?.tier === 'silver' && (
+            <Button onClick={() => navigate('/membership')} variant="primary" size="sm" fullWidth>
+              ✦ 升级金月会员
+            </Button>
+          )}
         </div>
       )}
 
