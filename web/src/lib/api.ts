@@ -6,13 +6,17 @@
 const BASE = '/api';
 
 async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
+  // 关键修复：先合并 headers，后展开 options 但不许 options.headers 覆盖
+  // （在生产 bundle 中 ...options 会覆盖前面的 headers 对象）
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  const { headers: _drop, ...restOptions } = options;
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
+    headers,
+    ...restOptions,
   });
 
   if (!res.ok) {
