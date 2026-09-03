@@ -25,7 +25,7 @@ const SUIT_NAMES_EN: Record<string, string> = {
   wands: 'Wands',
   cups: 'Cups',
   swords: 'Swords',
-  pentacles: 'Pentacles',
+  pentacles: 'Pents',  // 实际文件命名是 Pents01-14（Pents 缩写，不是 Pentacles）
 };
 
 /**
