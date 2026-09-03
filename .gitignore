@@ -70,3 +70,5 @@ ehthumbs.db
 # 不要忽略 .gitkeep
 !.gitkeep
 !data/.gitkeep
+# 一次性生产临时脚本（grant / 修 schema）
+scripts/_prod_*
