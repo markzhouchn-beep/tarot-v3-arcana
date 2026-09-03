@@ -50,17 +50,54 @@ export default function Reading() {
     setSharing(true);
     setShareError(null);
     try {
-      const summary = order.reading.sections[0]?.body?.slice(0, 80) || '';
-      const sectionTitle = order.reading.sections[0]?.title || '';
       const cardName = order.cards[0]?.name;
       const spreadName = order.spread_name || order.spread_type || '塔罗解读';
 
+      // 主题从 spread_type 推断
+      const st = order.spread_type || '';
+      const theme: 'love' | 'career' | 'money' | 'self' =
+        st.startsWith('love') ? 'love' :
+        st.startsWith('career') ? 'career' :
+        st.startsWith('money') ? 'money' :
+        'self';
+
+      // AI 输出的 4 个关键字段：
+      // - goldenPhrase: 「## 总结」 section（最后一段）
+      // - briefAnswer: 「## 现状分析」前 60 字
+      // - atmosphere: 「## 牌阵总览」section（第一段）
+      // - summary: 取最后一节 body 前 80 字作为 fallback
+      const sections = order.reading.sections || [];
+      const findSection = (kw: string) =>
+        sections.find(s => (s.title || '').includes(kw)) || sections[sections.length - 1];
+      const overviewSec = findSection('总览') || sections[0];
+      const statusSec = findSection('现状') || sections[1] || sections[0];
+      const summarySec = sections[sections.length - 1] || sections[0];
+
+      const goldenPhrase = (summarySec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 100);
+      const briefAnswer = (statusSec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 80);
+      const atmosphere = (overviewSec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 120);
+      const summary = (summarySec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 80);
+
+      // 牌图 URL（公版 Rider-Waite）
+      const cardsWithImg = order.cards.map(c => ({
+        id: c.id,
+        name: c.name,
+        orientation: (c.orientation === 'reversed' ? 'reversed' : 'upright') as 'reversed' | 'upright',
+        imageUrl: `/cards/rider-waite/${c.id}.jpg`,
+      }));
+
       const blob = await generateShareCard({
-        question: order.question,
+        siteName: 'ARCANA 星语塔罗',
+        siteUrl: 'tarot.layershop.store',
         spreadName,
+        theme,
+        cards: cardsWithImg,
+        question: order.question,
+        goldenPhrase,
+        briefAnswer,
+        atmosphere,
         cardName,
         summary,
-        sectionTitle,
       }, template);
 
       const filename = `arcana-${template}-${order.id.slice(0, 8)}.png`;
