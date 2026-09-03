@@ -17,7 +17,18 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || `HTTP ${res.status}`);
+    // 后端返 { error, message }，前端要显示 message 没 message 则 error
+    const code = err.error || err.code || `HTTP_${res.status}`;
+    const display = err.message || err.error || `请求失败 (${res.status})`;
+    const e: any = new Error(display);
+    e.status = res.status;
+    e.code = code;
+    e.raw = err;
+    // 调试用：开发环境下打印完整错
+    if (import.meta.env.DEV) {
+      console.error('[api]', res.status, code, err);
+    }
+    throw e;
   }
 
   return res.json();

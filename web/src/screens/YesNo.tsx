@@ -81,7 +81,14 @@ export default function YesNo() {
       setQuestion('');
       refreshQuota();
     } catch (err: any) {
-      setError(err.message);
+      // 调试：含 HTTP 状态 + 错码 + message，方便快速定位
+      const detail = [
+        err.code && `[${err.code}]`,
+        err.status && `HTTP ${err.status}`,
+        err.message,
+      ].filter(Boolean).join(' ');
+      setError(detail || '未知错误');
+      console.error('[YesNo] draw error:', { status: err.status, code: err.code, message: err.message, raw: err.raw });
     } finally {
       setLoading(false);
     }
