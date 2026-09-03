@@ -21,22 +21,24 @@ export async function callAI({ systemPrompt, userPrompt, maxTokens = 2000 }) {
     return mockAIResponse(userPrompt);
   }
 
-  // 真实模式：调 MiniMax API
+  // 真实模式：调 MiniMax 原生 API（OpenAI 兼容格式）
+  // 关键：anthropic 兼容层 /anthropic/v1/messages 不认新 key，必须用 native /v1/text/chatcompletion_v2
   const start = Date.now();
-  const url = `${config.MINIMAX_BASE_URL}/v1/messages`;
+  const url = `${config.MINIMAX_BASE_URL}/v1/text/chatcompletion_v2`;
 
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': config.MINIMAX_API_KEY,
-      'anthropic-version': '2023-06-01',
+      'Authorization': `Bearer ${config.MINIMAX_API_KEY}`,
     },
     body: JSON.stringify({
       model: config.MINIMAX_MODEL,
       max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
     }),
   });
 
@@ -49,16 +51,15 @@ export async function callAI({ systemPrompt, userPrompt, maxTokens = 2000 }) {
   }
 
   const data = await res.json();
-  // minimax 返回 content[] 包含 thinking + text，取 type='text' 的项
-  const textItem = data.content?.find((c) => c.type === 'text') || data.content?.[0];
-  const content = textItem?.text || '';
-  const tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+  // OpenAI 兼容响应：choices[0].message.content
+  const content = data.choices?.[0]?.message?.content || '';
+  const inputTokens = data.usage?.prompt_tokens || 0;
+  const outputTokens = data.usage?.completion_tokens || 0;
+  const tokensUsed = data.usage?.total_tokens || (inputTokens + outputTokens);
 
-  console.log(`[ai] ${tokensUsed} tokens, ${duration}ms`);
+  console.log(`[ai] ${tokensUsed} tokens (in=${inputTokens} out=${outputTokens}), ${duration}ms`);
 
   // 计算成本（人民币）：输入 ¥0.0001/1k tokens + 输出 ¥0.0002/1k tokens（MiniMax 报价）
-  const inputTokens = data.usage?.input_tokens || 0;
-  const outputTokens = data.usage?.output_tokens || 0;
   const cost = (inputTokens / 1000) * 0.0001 + (outputTokens / 1000) * 0.0002;
 
   return { content, tokensUsed, cost, duration };

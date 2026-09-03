@@ -36,7 +36,7 @@ export const config = {
 
   // MiniMax
   MINIMAX_API_KEY: str('MINIMAX_API_KEY', ''),
-  MINIMAX_BASE_URL: str('MINIMAX_BASE_URL', 'https://api.minimaxi.com/anthropic'),
+  MINIMAX_BASE_URL: str('MINIMAX_BASE_URL', 'https://api.minimaxi.com'),
   MINIMAX_MODEL: str('MINIMAX_MODEL', 'MiniMax-M2.7'),
 
   // 爱发电
