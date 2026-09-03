@@ -186,7 +186,8 @@ function ResultView({
             card={{
               id: result.card.id,
               name: result.card.name,
-              orientation: result.card.orientation === '正位' ? 'upright' : 'reversed',
+              // backend 现在返英文 upright/reversed，但兼容老的中文 '正位'
+              orientation: result.card.orientation === 'reversed' || result.card.orientation === '逆位' ? 'reversed' : 'upright',
             }}
             size="lg"
           />

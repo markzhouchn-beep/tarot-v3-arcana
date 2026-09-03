@@ -96,6 +96,17 @@ router.post('/draw', optionalAuth, (req, res) => {
     const card = cards[0];
     const result = inferYesNo(card);
 
+    // ⚠️ 关键修复：inferYesNo 返中文（是/否/不确定/视情况而定），
+    // 但 resultMap 键是英文（yes/no/uncertain）→ 直接查返 undefined
+    // 响应里 result/keywords/explanation 全部缺失 → 前端崩
+    const RESULT_NORMALIZE = {
+      '是': 'yes',
+      '否': 'no',
+      '不确定': 'uncertain',
+      '视情况而定': 'uncertain',  // '视情况而定' 近似于 uncertain
+    };
+    const resultKey = RESULT_NORMALIZE[result] || 'uncertain';
+
     // 拼装回答（不调 AI）
     const resultMap = {
       yes: {
@@ -142,7 +153,7 @@ router.post('/draw', optionalAuth, (req, res) => {
       ok: true,
       card: { id: card.id, name: card.name, orientation: card.orientation },
       question,
-      ...resultMap[result],
+      ...resultMap[resultKey],
       remaining: limit - used - 1,
     });
   } catch (err) {
