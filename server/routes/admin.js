@@ -122,7 +122,7 @@ router.get('/users/:id', requireAdmin, (req, res) => {
     const user = db.prepare(`SELECT id, email, tier, nickname, invite_code, email_verified, created_at, invited_by FROM users WHERE id = ?`).get(req.params.id);
     if (!user) return res.status(404).json({ error: 'NOT_FOUND' });
 
-    const orders = db.prepare(`SELECT id, plan, status, amount, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`).all(req.params.id);
+    const orders = db.prepare(`SELECT id, tier, spread_type, status, amount, paid_at, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`).all(req.params.id);
     const subs = db.prepare(`SELECT * FROM user_subscriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 5`).all(req.params.id);
     const quotas = db.prepare(`SELECT * FROM user_quotas WHERE user_id = ?`).all(req.params.id);
     const oracleCalls = db.prepare(`

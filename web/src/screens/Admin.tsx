@@ -301,12 +301,27 @@ function UsersTab() {
 
 function UserDetailModal({ user, onClose }: { user: any; onClose: () => void }) {
   const [detail, setDetail] = useState<any>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [newTier, setNewTier] = useState('silver');
   const [extendDays, setExtendDays] = useState(30);
   const [granting, setGranting] = useState(false);
 
+  const loadDetail = () => {
+    setLoadError(null);
+    setDetail(null);
+    adminApi.userDetail(user.id)
+      .then((d: any) => {
+        if (d?.error) {
+          setLoadError(d.message || d.error);
+        } else {
+          setDetail(d);
+        }
+      })
+      .catch((err: any) => setLoadError(err.message || '加载失败'));
+  };
+
   useEffect(() => {
-    adminApi.userDetail(user.id).then(setDetail);
+    loadDetail();
   }, [user.id]);
 
   const handleTierChange = async () => {
@@ -337,7 +352,12 @@ function UserDetailModal({ user, onClose }: { user: any; onClose: () => void }) 
           <button onClick={onClose} className="text-stone-500 hover:text-stone-800">×</button>
         </div>
         <div className="p-4 space-y-3">
-          {!detail ? (
+          {loadError ? (
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              ❌ 加载失败：{loadError}
+              <button onClick={loadDetail} className="ml-2 underline text-red-900 hover:text-red-700">重试</button>
+            </div>
+          ) : !detail ? (
             <Loading />
           ) : (
             <>
