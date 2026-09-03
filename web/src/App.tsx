@@ -8,6 +8,7 @@ import Hero from './screens/Hero';
 import Spreads from './screens/Spreads';
 import YesNo from './screens/YesNo';
 import Auth from './screens/Auth';
+import AuthCallback from './screens/AuthCallback';
 import Ask from './screens/Ask';
 import Draw from './screens/Draw';
 import Spread from './screens/Spread';
@@ -28,6 +29,7 @@ export default function App() {
       <Route path="/spreads" element={<Spreads />} />
       <Route path="/yes-no" element={<YesNo />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       <Route path="/ask/:spread" element={<Ask />} />
       <Route path="/draw/:order_id" element={<Draw />} />
