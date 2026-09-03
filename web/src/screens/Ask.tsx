@@ -76,8 +76,9 @@ export default function Ask() {
     setError(null);
     setSubmitting(true);
     try {
-      // tier 映射：单张→sku_single, 三张→sku_three, 否则→sku_ten
-      const tier = spread.cards === 1 ? 'single' : spread.cards === 3 ? 'three' : 'ten';
+      // tier 映射：仅映射 1/3/10 牌。5/7 牌走 spread.id 自己的定义。
+      // Bug fix 2026-09-03：原来「不是 1/3 就映射 ten」会让 5 牌变成 10 牌
+      const tier = spread.cards === 1 ? 'single' : spread.cards === 3 ? 'three' : spread.cards === 10 ? 'ten' : 'custom';
       const result = await ordersApi.create({
         spread_type: spread.id,
         spread_theme: spread.theme,

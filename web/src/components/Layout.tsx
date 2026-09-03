@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { ReactNode } from 'react';
+import { UserMenu } from './UserMenu';
 
 interface Props {
   children: ReactNode;
@@ -24,8 +25,13 @@ export function Layout({ children, orbs = false, size = 'md' }: Props) {
     <div className="relative min-h-screen w-full overflow-x-hidden">
       {orbs && <OrbBackground />}
 
+      {/* Bug fix 2026-09-03：右上角全局加用户菜单（昵称 + 退出） */}
+      <div className="fixed top-md right-md z-50">
+        <UserMenu />
+      </div>
+
       <main
-        className="relative z-10 mx-auto px-md py-xl w-full"
+        className="relative z-10 mx-auto px-md py-xl w-full pt-2xl"
         style={{ maxWidth: SIZE_MAX[size] }}
       >
         {children}

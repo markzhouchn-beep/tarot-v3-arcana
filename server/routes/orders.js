@@ -39,24 +39,33 @@ router.post('/create', optionalAuth, (req, res) => {
     const amount = tierInfo.amount;
     const skuId = tierInfo.sku || tierInfo.afdian_type === 'sku' ? tierInfo.sku : null;
 
-    // 根据 tier 推断 spread_type（Phase 2.10 修复：前端 Checkout.tsx 可能漏传 / 传错）
-    // lite→single, classic→three, deep→ten
-    const SPREAD_TYPE_MAP = {
-      lite: 'single', single: 'single',
-      classic: 'three', three: 'three',
-      deep: 'ten', ten: 'ten',
+    // 牌张数推算
+    // 原则：优先用 spread_type 对应的牌阵定义里的 cards 字段；
+    // 如果是 single/three/ten/lite/classic/dep 这种「价格 tier」且没指定 spread，才用 tier 推断。
+    // Bug fix 2026-09-03：原 SPREAD_TYPE_MAP[tier] || spread_type 会让 5 牌 spread 被覆成 10 牌
+    const TIER_TO_CARDS = { lite: 1, single: 1, classic: 3, three: 3, deep: 10, ten: 10 };
+    const SPREAD_DEFINITIONS = {
+      'love-single': 1, 'love-3': 3, 'love-cross-5': 5, 'love-crush-5': 5, 'love-chakra-7': 7,
+      'career-single': 1, 'career-3': 3, 'career-cross-5': 5,
+      'money-single': 1, 'money-3': 3,
+      'self-single': 1, 'self-3': 3,
+      'celtic-10': 10,
     };
-    const inferredSpreadType = SPREAD_TYPE_MAP[tier] || spread_type || 'single';
+    let cardsCount;
+    if (spread_type && SPREAD_DEFINITIONS[spread_type]) {
+      cardsCount = SPREAD_DEFINITIONS[spread_type];
+    } else if (TIER_TO_CARDS[tier]) {
+      cardsCount = TIER_TO_CARDS[tier];
+    } else {
+      cardsCount = 1;
+    }
+    const inferredSpreadType = SPREAD_DEFINITIONS[spread_type] ? spread_type : (TIER_TO_CARDS[tier] ? (cardsCount === 1 ? 'single' : cardsCount === 3 ? 'three' : 'ten') : 'single');
 
     const orderId = crypto.randomUUID();
     const outTradeNo = `arc-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const isTest = device_id?.startsWith('test-') ? 1 : 0;
 
     // 占位：抽牌（实际生成在 payment 后）
-    const cardsCount = inferredSpreadType === 'single' ? 1
-                     : inferredSpreadType === 'three' ? 3
-                     : inferredSpreadType === 'ten' ? 10
-                     : 1;
     const cards = drawCards(cardsCount);
 
     // 🔥 会员检查：silver/gold 会员跳过支付，直接标记为 paid

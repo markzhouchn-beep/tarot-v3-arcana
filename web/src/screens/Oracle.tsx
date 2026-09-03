@@ -8,13 +8,24 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
-import { oracleApi, authApi, membershipApi } from '../lib/api';
+import { oracleApi, authApi, membershipApi, ordersApi } from '../lib/api';
 
 interface Session {
   id: string;
   title?: string;
   created_at: number;
   last_message?: string;
+  reading_id?: string;
+  message_count?: number;
+  spread_type?: string;
+  question?: string;
+}
+
+interface Reading {
+  id: string;
+  question: string;
+  spread_type: string;
+  created_at: number;
 }
 
 export default function Oracle() {
@@ -24,6 +35,8 @@ export default function Oracle() {
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [readings, setReadings] = useState<Reading[]>([]);
+  const [selectedReadingId, setSelectedReadingId] = useState<string>('');
   const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,10 +45,24 @@ export default function Oracle() {
       authApi.me().catch(() => null),
       membershipApi.status().catch(() => null),
       oracleApi.sessions().catch(() => ({ sessions: [] })),
-    ]).then(([u, m, s]: any[]) => {
+      ordersApi.list().catch(() => ({ orders: [] })),
+    ]).then(([u, m, s, o]: any[]) => {
       setUser(u?.user || null);
       setTier(m?.tier || 'guest');
       setSessions(s?.sessions || []);
+      // 拉已解读的 reading（可追问）
+      const paidOrders = (o?.orders || []).filter(
+        (x: any) => x.status === 'interpreted' || x.status === 'paid'
+      );
+      setReadings(paidOrders.map((x: any) => ({
+        id: x.id,
+        question: x.question,
+        spread_type: x.spread_type,
+        created_at: x.created_at,
+      })));
+      if (paidOrders.length > 0 && !selectedReadingId) {
+        setSelectedReadingId(paidOrders[0].id);
+      }
     });
   }, []);
 
@@ -54,10 +81,22 @@ export default function Oracle() {
       navigate('/membership');
       return;
     }
+    if (!selectedReadingId) {
+      setError('请先完成一次占卜，才能向 Oracle 追问');
+      return;
+    }
     setError(null);
     setAsking(true);
     try {
-      const res = await oracleApi.ask({ content: question });
+      // 先创建/获取 session_id
+      const sess = await oracleApi.createSession(selectedReadingId);
+      const sessionId = sess.sessionId || sess.id;
+      if (!sessionId) throw new Error('无法创建 Oracle 会话');
+
+      const res = await oracleApi.ask({
+        session_id: sessionId,
+        content: question,
+      });
       setAnswer(res.content || res.answer || 'Oracle 已收到你的问题');
       setQuestion('');
       // 刷新 session 列表
@@ -116,6 +155,24 @@ export default function Oracle() {
         <div className="panel p-lg mb-lg bg-bg-occult animate-fade-in">
           <div className="caps text-2xs text-primary mb-sm">— Oracle 答 —</div>
           <p className="text-sm text-fg font-body leading-relaxed whitespace-pre-line">{answer}</p>
+        </div>
+      )}
+
+      {/* 关联解读选择 */}
+      {readings.length > 0 && (
+        <div className="panel p-md mb-lg">
+          <div className="caps text-2xs text-fg-faint mb-sm">— 关联占卜 —</div>
+          <select
+            className="input"
+            value={selectedReadingId}
+            onChange={e => setSelectedReadingId(e.target.value)}
+          >
+            {readings.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.spread_type} · {(r.question || '').slice(0, 30)}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 

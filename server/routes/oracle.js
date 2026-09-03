@@ -128,6 +128,39 @@ router.get('/preset-questions', optionalAuth, (req, res) => {
 // 创建或获取当前牌阵的 Oracle 会话
 // Body: { reading_id }
 // ============================================================
+/**
+ * GET /api/oracle/sessions
+ * 列出当前用户的所有 Oracle 会话（含未读/最后消息预览）
+ * Bug fix 2026-09-03：前端 oracleApi.sessions() 调用此端点但之前不存在
+ */
+router.get('/sessions', optionalAuth, (req, res) => {
+  try {
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.json({ ok: true, sessions: [] });
+    }
+
+    const rows = db.prepare(`
+      SELECT
+        s.id, s.reading_id, s.spread_type, s.status,
+        s.message_count, s.created_at, s.last_message_at,
+        r.question,
+        (SELECT m.content FROM oracle_messages m
+         WHERE m.session_id = s.id ORDER BY m.created_at DESC LIMIT 1) AS last_message
+      FROM oracle_sessions s
+      LEFT JOIN readings r ON r.id = s.reading_id
+      WHERE s.user_id = ?
+      ORDER BY COALESCE(s.last_message_at, s.created_at) DESC
+      LIMIT 50
+    `).all(userId);
+
+    res.json({ ok: true, sessions: rows });
+  } catch (err) {
+    console.error('[oracle] sessions list error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.post('/session', optionalAuth, (req, res) => {
   try {
     const userId = getUserId(req);
