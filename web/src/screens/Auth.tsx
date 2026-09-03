@@ -1,5 +1,5 @@
 // ============================================================
-// screens/Auth.tsx · 登录 / 注册（Magic Link + 密码双轨 UI）
+// screens/Auth.tsx · 邮箱密码登录 / 注册（v3.0.1：禁魔法链接）
 // Phase 1 · 第 4 页
 // ============================================================
 
@@ -10,7 +10,6 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
 import { authApi, invitesApi } from '../lib/api';
 
-type Mode = 'magic' | 'password';
 type Action = 'login' | 'register';
 
 export default function Auth() {
@@ -20,7 +19,6 @@ export default function Auth() {
   const inviteCodeFromUrl = params.get('invite') || '';
   const [inviterInfo, setInviterInfo] = useState<{ nickname: string; tier: string } | null>(null);
 
-  const [mode, setMode] = useState<Mode>('magic');
   const [action, setAction] = useState<Action>('login');
 
   const [email, setEmail] = useState('');
@@ -46,27 +44,6 @@ export default function Auth() {
       if (d.user) setLoggedInUser(d.user);
     }).catch(() => {});
   }, []);
-
-  const handleMagicLink = async () => {
-    if (!email.includes('@')) {
-      setMessage({ type: 'error', text: '请输入有效邮箱' });
-      return;
-    }
-    setLoading(true);
-    setMessage(null);
-    try {
-      // Phase 4: 带上 invite_code（如果 URL 有）
-      await authApi.magicLink(email, 'login', inviteCodeFromUrl || undefined);
-      setMessage({
-        type: 'success',
-        text: '魔法链接已发送到你的邮箱（开发模式：链接已复制到控制台）',
-      });
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handlePassword = async () => {
     if (!email.includes('@')) {
@@ -94,10 +71,7 @@ export default function Auth() {
     }
   };
 
-  const handleSubmit = () => {
-    if (mode === 'magic') return handleMagicLink();
-    return handlePassword();
-  };
+  const handleSubmit = () => handlePassword();
 
   return (
     <Layout size="sm">
@@ -124,12 +98,6 @@ export default function Auth() {
         </p>
       </div>
 
-      {/* 模式切换 */}
-      <div className="flex gap-xs mb-xl border-b border-border">
-        <ModeTab active={mode === 'magic'} onClick={() => setMode('magic')} label="魔法链接" />
-        <ModeTab active={mode === 'password'} onClick={() => setMode('password')} label="邮箱密码" />
-      </div>
-
       {/* 邮箱 */}
       <div className="mb-md">
         <label className="caps block mb-xs text-fg-faint">邮箱</label>
@@ -143,32 +111,45 @@ export default function Auth() {
         />
       </div>
 
-      {/* 密码（仅 password 模式） */}
-      {mode === 'password' && (
-        <>
-          <div className="mb-md">
-            <label className="caps block mb-xs text-fg-faint">密码</label>
-            <input
-              type="password"
-              className="input"
-              placeholder={action === 'register' ? '至少 8 位，含数字和字母' : '你的密码'}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoComplete={action === 'register' ? 'new-password' : 'current-password'}
-            />
-          </div>
+      {/* 密码 */}
+      <div className="mb-md">
+        <label className="caps block mb-xs text-fg-faint">密码</label>
+        <input
+          type="password"
+          className="input"
+          placeholder={action === 'register' ? '至少 8 位，含数字和字母' : '你的密码'}
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          autoComplete={action === 'register' ? 'new-password' : 'current-password'}
+        />
+      </div>
 
-          {/* 登录 / 注册 切换 */}
-          <div className="flex justify-end mb-md">
-            <button
-              onClick={() => setAction(action === 'login' ? 'register' : 'login')}
-              className="text-xs text-fg-secondary hover:text-primary"
-            >
-              {action === 'login' ? '还没有账户？注册' : '已有账户？登录'}
-            </button>
-          </div>
-        </>
-      )}
+      {/* 登录 / 注册 切换 */}
+      <div className="flex justify-end mb-md">
+        <button
+          onClick={() => setAction(action === 'login' ? 'register' : 'login')}
+          className="text-xs text-fg-secondary hover:text-primary"
+        >
+          {action === 'login' ? '还没有账户？注册' : '已有账户？登录'}
+        </button>
+      </div>
+
+      {/* v3.0.1 C 方案：验证码登录 + 忘记密码入口 */}
+      <button
+        onClick={() => navigate('/auth/code')}
+        className="text-xs text-primary hover:text-primary-light mt-xs block mx-auto mb-sm"
+      >
+        ✦ 用验证码登录
+      </button>
+
+      <div className="flex justify-end mb-md">
+        <button
+          onClick={() => navigate('/auth/forgot')}
+          className="text-xs text-fg-faint hover:text-primary"
+        >
+          忘了密码？
+        </button>
+      </div>
 
       {/* 消息 */}
       {message && (
@@ -185,15 +166,15 @@ export default function Auth() {
 
       {/* 主按钮 */}
       <Button onClick={handleSubmit} loading={loading} fullWidth size="lg">
-        {mode === 'magic' ? '发送魔法链接' : action === 'login' ? '登录' : '注册'}
+        {action === 'login' ? '登录' : '注册'}
       </Button>
 
       {/* 提示 */}
       <div className="mt-xl text-center">
         <p className="text-xs text-fg-faint leading-relaxed">
-          {mode === 'magic'
-            ? '点击按钮后，链接会发送到你的邮箱\n（开发模式下链接会显示在浏览器控制台）'
-            : '密码至少 8 位，须含数字和字母\n连续 5 次错误将锁定账户 15 分钟'}
+          密码至少 8 位，须含数字和字母
+          {'\n'}
+          连续 5 次错误将锁定账户 15 分钟
         </p>
       </div>
 
@@ -212,31 +193,10 @@ export default function Auth() {
         <div className="mt-xl panel p-md bg-bg-occult border-primary/20">
           <div className="caps text-primary mb-xs">当前已登录</div>
           <p className="text-xs text-fg-secondary font-body mb-md">
-            你已用魔法链接登录。绑定密码后可以更快捷登录。
+            你已用邮箱密码登录。如需换设备登录，请记得密码。
           </p>
-          <button
-            onClick={() => alert('绑定密码功能：Phase 1.6 开放')}
-            className="text-xs text-primary hover:text-primary-light underline"
-          >
-            → 设置密码
-          </button>
         </div>
       )}
     </Layout>
-  );
-}
-
-function ModeTab({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 py-sm font-caps uppercase tracking-[0.18em] text-2xs transition-colors duration-fast border-b-2 ${
-        active
-          ? 'border-primary text-primary'
-          : 'border-transparent text-fg-faint hover:text-fg-secondary'
-      }`}
-    >
-      {label}
-    </button>
   );
 }

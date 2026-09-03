@@ -84,4 +84,27 @@ export async function sendRenewalReminder({ email, tier, daysLeft }) {
   return { ok: true, todo: true };
 }
 
-export default { sendMagicLink, sendRenewalReminder };
+/**
+ * 通用邮件发送（v3.0.1 C 方案新增）
+ * body: { to, subject, html, text }
+ */
+export async function sendEmail({ to, subject, html, text }) {
+  const t = getTransporter();
+  if (!t) {
+    console.log(`[mailer] [MOCK] ${subject} → ${to}`);
+    return { ok: true, mocked: true };
+  }
+  try {
+    await t.sendMail({
+      from: config.SMTP_FROM,
+      to, subject, html, text,
+    });
+    console.log(`[mailer] sent: ${subject} → ${to}`);
+    return { ok: true };
+  } catch (err) {
+    console.error(`[mailer] send failed: ${err.message}`);
+    return { ok: false, error: err.message };
+  }
+}
+
+export default { sendMagicLink, sendRenewalReminder, sendEmail };

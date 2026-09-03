@@ -8,7 +8,9 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { config } from '../lib/config.js';
-import { sendMagicLink } from '../lib/mailer.js';
+import { sendMagicLink, sendEmail } from '../lib/mailer.js';
+import * as magicCode from '../lib/magic-code.js';
+import { codeEmail } from '../lib/email-templates.js';
 import { optionalAuth, requireAuth } from '../middleware/auth.js';
 import {
   findInviterByCode, linkInviteAndGrantRewards,
@@ -266,6 +268,194 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('[auth] login error:', err);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+  }
+});
+
+// ============================================================
+// POST /api/auth/send-code · 发验证码（v3.0.1）
+// ============================================================
+router.post('/send-code', async (req, res) => {
+  try {
+    const { email, type = 'login' } = req.body || {};
+    if (!email?.includes('@')) return res.status(400).json({ ok: false, message: '请输入有效邮箱' });
+    if (!['login', 'reset'].includes(type)) return res.status(400).json({ ok: false, message: 'type 必须为 login 或 reset' });
+
+    if (type === 'reset') {
+      const u = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+      if (!u) return res.json({ ok: true, message: '如果该邮箱已注册，验证码已发送' });
+    }
+
+    const { code } = await magicCode.createCode(db, { email, type });
+    const tpl = codeEmail({ code, ttlMin: magicCode.CODE_TTL_MIN, purpose: type });
+    const isDev = process.env.NODE_ENV !== 'production';
+    console.log(`[magic-code] email=${email} type=${type} code=${code}`);
+
+    try {
+      await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    } catch (e) {
+      console.error('[magic-code] email send failed:', e.message);
+      if (!isDev) throw e;
+    }
+
+    res.json({
+      ok: true,
+      message: '验证码已发送，请查收邮箱',
+      ttl_min: magicCode.CODE_TTL_MIN,
+      ...(isDev ? { dev_code: code } : {}),
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ ok: false, message: err.message });
+  }
+});
+
+// ============================================================
+// POST /api/auth/verify-code · 老用户有密码直接登录，否则返 temp_token
+// Review Bug 1 修复
+// ============================================================
+router.post('/verify-code', async (req, res) => {
+  try {
+    const { email, code } = req.body || {};
+    if (!email || !code) return res.status(400).json({ ok: false, message: '邮箱和验证码必填' });
+
+    await magicCode.verifyCode(db, { email, code, type: 'login' });
+
+    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
+    let isNewUser = false;
+    if (!user) {
+      const userId = crypto.randomUUID();
+      const inviteCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+      db.prepare(`
+        INSERT INTO users (id, email, password_hash, tier, invite_code, created_at)
+        VALUES (?, ?, NULL, 'registered', ?, ?)
+      `).run(userId, email.toLowerCase(), inviteCode, Date.now());
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      isNewUser = true;
+    }
+
+    // Bug 1 修复：老用户已有密码 → 直接登录
+    if (user.password_hash) {
+      const sessionId = crypto.randomBytes(32).toString('hex');
+      const expiresAt = Date.now() + config.SESSION_TTL_DAYS * 24 * 3600 * 1000;
+      db.prepare(`
+        INSERT INTO sessions (id, user_id, ip, user_agent, expires_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(sessionId, user.id, req.ip, req.headers['user-agent'] || '', expiresAt);
+
+      res.cookie(config.SESSION_COOKIE_NAME, sessionId, {
+        httpOnly: true,
+        secure: config.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: config.SESSION_TTL_DAYS * 24 * 3600 * 1000,
+      });
+
+      return res.json({
+        ok: true,
+        already_logged_in: true,
+        is_new_user: false,
+        has_password: true,
+        user: { id: user.id, email: user.email, tier: user.tier, nickname: user.nickname },
+        session_id: sessionId,
+        message: '登录成功',
+      });
+    }
+
+    // 新用户 / 老用户无密码 → 走 set-password
+    const tempToken = crypto.randomBytes(32).toString('hex');
+    const tempExpires = Date.now() + 10 * 60 * 1000;
+    db.prepare(`
+      INSERT INTO temp_tokens (token, user_id, purpose, expires_at)
+      VALUES (?, ?, 'set-password', ?)
+    `).run(tempToken, user.id, tempExpires);
+
+    res.json({
+      ok: true,
+      already_logged_in: false,
+      is_new_user: isNewUser,
+      has_password: false,
+      temp_token: tempToken,
+      ttl_min: 10,
+      message: isNewUser ? '验证成功！请设置你的密码以完成注册' : '验证成功！请设置密码',
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ ok: false, message: err.message });
+  }
+});
+
+// ============================================================
+// POST /api/auth/set-password · temp_token → 自动登录
+// ============================================================
+router.post('/set-password', async (req, res) => {
+  try {
+    const { temp_token, password } = req.body || {};
+    if (!temp_token || !password) return res.status(400).json({ ok: false, message: '参数缺失' });
+    if (password.length < 8 || !/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
+      return res.status(400).json({ ok: false, message: '密码至少 8 位，须含数字和字母' });
+    }
+
+    const row = db.prepare(`
+      SELECT * FROM temp_tokens
+      WHERE token = ? AND purpose = 'set-password' AND used_at IS NULL AND expires_at > ?
+    `).get(temp_token, Date.now());
+    if (!row) return res.status(400).json({ ok: false, message: '临时 token 无效或已过期，请重新验证' });
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(passwordHash, row.user_id);
+    db.prepare(`UPDATE temp_tokens SET used_at = ? WHERE token = ?`).run(Date.now(), temp_token);
+
+    const sessionId = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + config.SESSION_TTL_DAYS * 24 * 3600 * 1000;
+    db.prepare(`
+      INSERT INTO sessions (id, user_id, ip, user_agent, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(sessionId, row.user_id, req.ip, req.headers['user-agent'] || '', expiresAt);
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
+
+    res.cookie(config.SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: config.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: config.SESSION_TTL_DAYS * 24 * 3600 * 1000,
+    });
+
+    res.json({
+      ok: true,
+      user: { id: user.id, email: user.email, tier: user.tier, nickname: user.nickname },
+      session_id: sessionId,
+      message: '密码设置成功，已登录',
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// ============================================================
+// POST /api/auth/reset · 验证码 + 新密码 → 重置（不自动登录）
+// Review 优化：reset 后清理 temp_tokens
+// ============================================================
+router.post('/reset', async (req, res) => {
+  try {
+    const { email, code, new_password } = req.body || {};
+    if (!email || !code || !new_password) return res.status(400).json({ ok: false, message: '参数缺失' });
+    if (new_password.length < 8 || !/\d/.test(new_password) || !/[a-zA-Z]/.test(new_password)) {
+      return res.status(400).json({ ok: false, message: '密码至少 8 位，须含数字和字母' });
+    }
+
+    await magicCode.verifyCode(db, { email, code, type: 'reset' });
+
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+    if (!user) return res.status(400).json({ ok: false, message: '用户不存在' });
+
+    const passwordHash = await bcrypt.hash(new_password, 12);
+    db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(passwordHash, user.id);
+
+    magicCode.invalidateAll(db, email);
+    db.prepare(`UPDATE temp_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL`)
+      .run(Date.now(), user.id);
+
+    res.json({ ok: true, message: '密码重置成功，请用新密码登录' });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ ok: false, message: err.message });
   }
 });
 

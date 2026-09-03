@@ -89,6 +89,41 @@ export const authApi = {
   }),
   me: () => request('/auth/me'),
   logout: () => request('/auth/logout', { method: 'POST' }),
+
+  // === v3.0.1 C 方案：6 位验证码登录 ===
+  sendCode: (email: string, type: 'login' | 'reset' = 'login') =>
+    request('/auth/send-code', {
+      method: 'POST',
+      body: JSON.stringify({ email, type }),
+    }) as Promise<{ ok: boolean; message: string; ttl_min: number; dev_code?: string }>,
+
+  verifyCode: (email: string, code: string) =>
+    request('/auth/verify-code', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    }) as Promise<{
+      ok: boolean;
+      already_logged_in: boolean;
+      is_new_user: boolean;
+      has_password: boolean;
+      temp_token?: string;
+      ttl_min?: number;
+      user?: any;
+      session_id?: string;
+      message: string;
+    }>,
+
+  setPassword: (temp_token: string, password: string) =>
+    request('/auth/set-password', {
+      method: 'POST',
+      body: JSON.stringify({ temp_token, password }),
+    }) as Promise<{ ok: boolean; user?: any; session_id?: string; message: string }>,
+
+  resetPassword: (email: string, code: string, new_password: string) =>
+    request('/auth/reset', {
+      method: 'POST',
+      body: JSON.stringify({ email, code, new_password }),
+    }) as Promise<{ ok: boolean; message: string }>,
 };
 
 export const membershipApi = {
