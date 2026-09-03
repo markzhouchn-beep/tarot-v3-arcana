@@ -47,7 +47,7 @@ export default function Hero() {
           星 语 塔 罗
         </h2>
         <p className="text-sm font-body text-fg-faint italic">
-          当答案藏在牌面，命运便不再沉默
+          答案就在牌面
         </p>
       </header>
 
@@ -64,7 +64,7 @@ export default function Hero() {
                 一张牌，回答你心中那个问题
               </h3>
               <p className="text-sm text-fg-faint font-body">
-                不用邮箱 · 不用注册 · 抽 1 张牌立即得到答案
+                无需登录 · 抽 1 张牌立即看到答案
               </p>
             </div>
             <div className="text-3xl opacity-40 group-hover:opacity-100">→</div>

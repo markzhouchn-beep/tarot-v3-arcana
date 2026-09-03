@@ -24,7 +24,7 @@ const TIERS = [
     monthly: 19.9,
     yearly: 199,
     features: [
-      '无限 Yes/No 占卜',
+      '每日无限 Yes/No',
       '所有单张 / 三张牌阵',
       '银月专属牌阵（5 张阵）',
       '5 次追问 / 月',

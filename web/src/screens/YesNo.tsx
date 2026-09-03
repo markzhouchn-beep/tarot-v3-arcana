@@ -204,9 +204,9 @@ function ResultView({
         ))}
       </div>
 
-      {/* 能量倾向 */}
+      {/* 解读方向 */}
       <div className="panel p-lg mb-md">
-        <div className="caps text-fg-faint mb-xs">能量倾向</div>
+        <div className="caps text-fg-faint mb-xs">解读方向</div>
         <p className="font-display text-md text-fg leading-relaxed">
           {result.energy_tendency}
         </p>
@@ -233,7 +233,7 @@ function ResultView({
         <div className="panel p-lg bg-bg-occult border-primary/40">
           <div className="caps text-primary mb-xs">— 想看完整解读 —</div>
           <p className="text-sm text-fg-secondary font-body mb-md leading-relaxed">
-            一张牌只是方向。一份完整解读，包含你的能量状态、可能发展、行动建议 —— 只需 ¥1.9。
+            一张牌只是一个方向。完整解读包含状态分析、可能发展、行动建议 —— 只需 ¥1.9。
           </p>
           <Button
             onClick={onUnlock}

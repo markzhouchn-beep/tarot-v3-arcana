@@ -82,7 +82,7 @@ export default function Oracle() {
       return;
     }
     if (!selectedReadingId) {
-      setError('请先完成一次占卜，才能向 Oracle 追问');
+      setError('请先完成一次解读，才能继续追问');
       return;
     }
     setError(null);
@@ -117,7 +117,7 @@ export default function Oracle() {
           <div className="text-3xl mb-md">✦</div>
           <h3 className="font-display text-xl text-fg mb-sm">Oracle 智能问答</h3>
           <p className="text-sm text-fg-secondary font-body mb-md">
-            无限对话 · 占卜之外的全场景塔罗问答
+            无限对话 · 不限次数的追问
           </p>
           <div className="caps text-2xs text-fg-faint mb-md">需要会员订阅</div>
           <Button onClick={() => navigate('/auth')} variant="primary" size="md">

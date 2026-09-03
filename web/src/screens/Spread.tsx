@@ -273,7 +273,7 @@ function Paywall({
         <div className="text-2xl mb-xs">✦</div>
         <h3 className="font-display text-xl text-gradient-gold mb-xs">解锁完整 AI 解读</h3>
         <p className="text-xs text-fg-secondary font-body">
-          AI 将结合你的问题与每张牌的能量，给出深度解读
+          AI 将结合你的问题与每张牌的含义，给你完整解读
         </p>
       </div>
 
@@ -284,7 +284,7 @@ function Paywall({
 
       <ul className="text-xs text-fg-secondary font-body space-y-xs mb-lg">
         <li>· 3 段式深度解读（现状 · 挑战 · 行动）</li>
-        <li>· 每张牌的象征意义与位置能量</li>
+        <li>· 每张牌的象征意义与位置含义</li>
         <li>· 3 次免费追问机会</li>
         <li>· 解读永久保存（会员后台可查）</li>
       </ul>

@@ -351,7 +351,7 @@ function LoadingInterpretation({
         AI 正在解读
       </h3>
       <p className="text-xs text-fg-secondary font-body italic mb-lg">
-        {cardCount} 张牌的能量正在被解读中…
+        正在解读 {cardCount} 张牌…
       </p>
 
       {/* 进度条 */}

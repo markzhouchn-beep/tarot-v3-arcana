@@ -34,9 +34,9 @@ const PHASE_DURATION = {
 };
 
 const PHASE_TEXT = {
-  shuffle: { title: '洗 牌', body: '感受你的问题，让能量汇聚' },
-  cut:     { title: '切 牌', body: '命运从这一瞬开始展开' },
-  flip:    { title: '翻 牌', body: '听，牌在低语' },
+  shuffle: { title: '洗 牌', body: '默念你的问题' },
+  cut:     { title: '切 牌', body: '准备抽牌' },
+  flip:    { title: '翻 牌', body: '准备看结果' },
 };
 
 export default function Draw() {
