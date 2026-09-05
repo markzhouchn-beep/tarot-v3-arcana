@@ -141,8 +141,53 @@ export default function Hero() {
         </button>
       </section>
 
-      {/* TODO: Phase 1 后续页面 */}
-      <footer className="text-center text-2xs text-fg-faint mt-3xl">
+      {/* 塔罗百科 · 静态 SEO 页入口 */}
+      <section className="mt-3xl mb-xl">
+        <div className="caps text-fg-faint text-center mb-md">— 塔罗百科 —</div>
+        <div className="grid grid-cols-1 gap-xs">
+          <a
+            href="/tarot-cards.html"
+            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline"
+          >
+            <div className="flex items-center gap-md">
+              <span className="text-xl">✦</span>
+              <div>
+                <div className="font-display text-sm text-fg">78 张塔罗牌含义大全</div>
+                <div className="text-2xs text-fg-faint font-body">完整韦特图鉴 · 22 大阿 + 56 小阿</div>
+              </div>
+            </div>
+            <span className="text-fg-faint text-xs">→</span>
+          </a>
+          <a
+            href="/spread-guide.html"
+            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline"
+          >
+            <div className="flex items-center gap-md">
+              <span className="text-xl">◈</span>
+              <div>
+                <div className="font-display text-sm text-fg">塔罗牌阵教程</div>
+                <div className="text-2xs text-fg-faint font-body">13 种牌阵 · 凯尔特十字 / 三张 / 单张</div>
+              </div>
+            </div>
+            <span className="text-fg-faint text-xs">→</span>
+          </a>
+          <a
+            href="/faq.html"
+            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline"
+          >
+            <div className="flex items-center gap-md">
+              <span className="text-xl">✧</span>
+              <div>
+                <div className="font-display text-sm text-fg">塔罗占卜常见问题</div>
+                <div className="text-2xs text-fg-faint font-body">Yes/No · 感情 · 凯尔特 · 准吗</div>
+              </div>
+            </div>
+            <span className="text-fg-faint text-xs">→</span>
+          </a>
+        </div>
+      </section>
+
+      <footer className="text-center text-2xs text-fg-faint mt-xl">
         <div className="caps">v3.0 · Phase 1 · 2026</div>
       </footer>
     </Layout>

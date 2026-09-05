@@ -41,9 +41,13 @@ const PORT = config.PORT;
 // ===== 中间件 =====
 app.use(cors({
   origin: (origin, cb) => {
-    // 生产环境白名单：仅 FRONTEND_URL
-    // 开发环境：localhost + LAN_HOST
-    const allowed = [config.FRONTEND_URL];
+    // 白名单支持多 origin（逗号分隔），例如：
+    //   FRONTEND_URL=http://localhost:5175,https://tarot.layershop.store
+    // 生产环境用逗号多写几个；开发环境自动补 localhost + LAN_HOST
+    const allowed = (config.FRONTEND_URL || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
     if (config.NODE_ENV !== 'production') {
       allowed.push(
         'http://localhost:5175',

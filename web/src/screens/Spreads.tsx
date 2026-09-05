@@ -9,6 +9,7 @@ import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { PreviewLock } from '../components/PreviewLock';
 import { spreadsApi, authApi } from '../lib/api';
+import { setMeta, setOg, setLink } from '../lib/seo';
 
 interface Spread {
   id: string;
@@ -57,6 +58,45 @@ export default function Spreads() {
       setLoading(false);
     });
   }, []);
+
+  // SEO: 注入长尾关键词（牌阵选择页 → 感情/事业/凯尔特/Yes-No/每日运势）
+  // ────────────────────────────────────────────────────────────────
+  // 长尾词清单（低竞争，牌阵页/解读页专属）：
+  //   塔罗牌感情占卜 · 塔罗牌事业运势 · 凯尔特十字牌阵
+  //   塔罗牌他喜不喜欢我 · 塔罗Yes/No · 塔罗牌每日运势 · 塔罗牌阵大全
+  useEffect(() => {
+    const themeToKw: Record<string, string> = {
+      all:    '塔罗牌阵大全 · 在线塔罗占卜',
+      love:   '塔罗牌感情占卜 · 塔罗牌他喜不喜欢我',
+      career: '塔罗牌事业运势 · AI 塔罗牌解读',
+      money:  '塔罗牌财富占卜 · 塔罗牌每日运势',
+      self:   '凯尔特十字牌阵 · 塔罗牌解读',
+    };
+    const themeTitle: Record<string, string> = {
+      all:    '选择牌阵',
+      love:   '感情占卜',
+      career: '事业占卜',
+      money:  '财富占卜',
+      self:   '凯尔特十字',
+    };
+
+    const cur = themeTitle[theme] || '选择牌阵';
+    const kw = themeToKw[theme] || themeToKw.all;
+
+    document.title = `${cur} · 塔罗牌阵大全 | ARCANA ai 星语塔罗`;
+
+    setMeta('description',
+      `${cur}：${kw}。1 张每日指引 / 3 张过去现在未来 / 5 张恋人十字暗恋透视 / 7 张七脉轮 / 10 张凯尔特十字牌阵，覆盖感情、事业、财富、自我四大主题。在线塔罗占卜，AI 塔罗牌解读。`);
+
+    setMeta('keywords',
+      `塔罗牌阵大全,塔罗牌占卜,${kw},塔罗Yes/No,塔罗牌每日运势,在线塔罗,AI塔罗,塔罗牌解读`);
+
+    setOg('og:title', document.title);
+    setOg('og:description',
+      `${cur}：${kw}。完整 13 种牌阵：单张 / 三张 / 五张 / 七脉轮 / 凯尔特十字。AI 塔罗牌解读 ¥1.9 起。`);
+
+    setLink('canonical', `${window.location.origin}/spreads${theme === 'all' ? '' : `?theme=${theme}`}`);
+  }, [theme]);
 
   const filtered = theme === 'all' ? spreads : spreads.filter(s => s.theme === theme);
 
