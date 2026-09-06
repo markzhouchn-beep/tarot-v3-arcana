@@ -242,7 +242,7 @@ export default function Auth() {
                 className="input"
                 placeholder="your@email.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value.toLowerCase())}
                 onKeyDown={e => e.key === 'Enter' && sendCode()}
                 autoComplete="email"
                 autoCapitalize="off"
@@ -306,7 +306,7 @@ export default function Auth() {
               className="input"
               placeholder="your@email.com"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value.toLowerCase())}
               autoComplete="email"
               autoCapitalize="off"
               autoCorrect="off"

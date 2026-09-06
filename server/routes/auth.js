@@ -161,7 +161,10 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'WEAK_PASSWORD', message: '密码至少 8 位，含数字和字母' });
     }
 
-    const existing = db.prepare(`SELECT id FROM users WHERE email = ?`).get(email);
+    // 统一小写存储，修复大小写敏感问题
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const existing = db.prepare(`SELECT id FROM users WHERE email = ?`).get(normalizedEmail);
     if (existing) {
       return res.status(409).json({ error: 'EMAIL_EXISTS', message: '该邮箱已注册' });
     }
@@ -173,7 +176,7 @@ router.post('/register', async (req, res) => {
     db.prepare(`
       INSERT INTO users (id, email, password_hash, tier, invite_code, email_verified, created_at)
       VALUES (?, ?, ?, 'registered', ?, 0, ?)
-    `).run(userId, email, passwordHash, inviteCode, Date.now());
+    `).run(userId, normalizedEmail, passwordHash, inviteCode, Date.now());
 
     // 埋点：邮箱密码注册
     trackEvent('user_registered', {
@@ -193,12 +196,12 @@ router.post('/register', async (req, res) => {
           inviterUserId: inviter.id,
           inviteeUserId: userId,
           inviteCode: invite_code,
-          inviteeEmail: email,
+          inviteeEmail: normalizedEmail,
           deviceId,
           ip,
         });
         if (!inviteResult) {
-          console.warn(`[auth] register: invite link failed (antispam or self) for ${email} code=${invite_code}`);
+          console.warn(`[auth] register: invite link failed (antispam or self) for ${normalizedEmail} code=${invite_code}`);
         }
       }
     }
@@ -208,7 +211,7 @@ router.post('/register', async (req, res) => {
 
     res.json({
       ok: true,
-      user: { id: userId, email, tier: 'registered', email_verified: false, invite_code: inviteCode },
+      user: { id: userId, email: normalizedEmail, tier: 'registered', email_verified: false, invite_code: inviteCode },
       message: '请查收邮件验证邮箱',
     });
   } catch (err) {
@@ -296,21 +299,22 @@ router.post('/login', async (req, res) => {
 router.post('/send-code', async (req, res) => {
   try {
     const { email, type = 'login' } = req.body || {};
-    if (!email?.includes('@')) return res.status(400).json({ ok: false, message: '请输入有效邮箱' });
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    if (!normalizedEmail.includes('@')) return res.status(400).json({ ok: false, message: '请输入有效邮箱' });
     if (!['login', 'reset'].includes(type)) return res.status(400).json({ ok: false, message: 'type 必须为 login 或 reset' });
 
     if (type === 'reset') {
-      const u = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+      const u = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
       if (!u) return res.json({ ok: true, message: '如果该邮箱已注册，验证码已发送' });
     }
 
-    const { code } = await magicCode.createCode(db, { email, type });
+    const { code } = await magicCode.createCode(db, { email: normalizedEmail, type });
     const tpl = codeEmail({ code, ttlMin: magicCode.CODE_TTL_MIN, purpose: type });
     const isDev = process.env.NODE_ENV !== 'production';
-    console.log(`[magic-code] email=${email} type=${type} code=${code}`);
+    console.log(`[magic-code] email=${normalizedEmail} type=${type} code=${code}`);
 
     try {
-      await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+      await sendEmail({ to: normalizedEmail, subject: tpl.subject, html: tpl.html, text: tpl.text });
     } catch (e) {
       console.error('[magic-code] email send failed:', e.message);
       if (!isDev) throw e;

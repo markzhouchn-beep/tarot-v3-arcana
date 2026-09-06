@@ -102,7 +102,7 @@ export default function AuthForgot() {
             className="input mb-md"
             placeholder="你注册时用的邮箱"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value.toLowerCase())}
             autoComplete="email"
             autoFocus
           />

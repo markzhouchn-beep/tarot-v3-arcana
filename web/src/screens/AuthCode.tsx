@@ -123,7 +123,7 @@ export default function AuthCode() {
             className="input mb-md"
             placeholder="your@email.com"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value.toLowerCase())}
             autoComplete="email"
             autoFocus
           />
