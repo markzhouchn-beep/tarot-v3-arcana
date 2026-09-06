@@ -72,68 +72,67 @@ export default function Reading() {
     }
   };
 
-  // 下载分享卡片
-  const handleShare = async (template: 'quote' | 'question' | 'mood') => {
+  // 下载分享卡片（Canvas 生成放到 requestIdleCallback，不卡 UI）
+  const handleShare = (template: 'quote' | 'question' | 'mood') => {
     if (!order?.reading) return;
     setSharing(true);
     setShareError(null);
-    try {
-      const cardName = order.cards[0]?.name;
-      const spreadName = order.spread_name || order.spread_type || '塔罗解读';
 
-      // 主题从 spread_type 推断
-      const st = order.spread_type || '';
-      const theme: 'love' | 'career' | 'money' | 'self' =
-        st.startsWith('love') ? 'love' :
-        st.startsWith('career') ? 'career' :
-        st.startsWith('money') ? 'money' :
-        'self';
+    // 准备数据（同步）
+    const cardName = order.cards[0]?.name;
+    const spreadName = order.spread_name || order.spread_type || '塔罗解读';
+    const st = order.spread_type || '';
+    const theme: 'love' | 'career' | 'money' | 'self' =
+      st.startsWith('love') ? 'love' :
+      st.startsWith('career') ? 'career' :
+      st.startsWith('money') ? 'money' :
+      'self';
+    const sections = order.reading.sections || [];
+    const findSection = (kw: string) =>
+      sections.find(s => (s.title || '').includes(kw)) || sections[sections.length - 1];
+    const overviewSec = findSection('总览') || sections[0];
+    const statusSec = findSection('现状') || sections[1] || sections[0];
+    const summarySec = sections[sections.length - 1] || sections[0];
+    const goldenPhrase = (summarySec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 100);
+    const briefAnswer = (statusSec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 80);
+    const atmosphere = (overviewSec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 120);
+    const summary = (summarySec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 80);
+    const cardsWithImg = order.cards.map(c => ({
+      id: c.id,
+      name: c.name,
+      orientation: (c.orientation === 'reversed' ? 'reversed' : 'upright') as 'reversed' | 'upright',
+      imageUrl: `/cards/rider-waite/${c.id}.jpg`,
+    }));
 
-      // AI 输出的 4 个关键字段：
-      // - goldenPhrase: 「## 总结」 section（最后一段）
-      // - briefAnswer: 「## 现状分析」前 60 字
-      // - atmosphere: 「## 牌阵总览」section（第一段）
-      // - summary: 取最后一节 body 前 80 字作为 fallback
-      const sections = order.reading.sections || [];
-      const findSection = (kw: string) =>
-        sections.find(s => (s.title || '').includes(kw)) || sections[sections.length - 1];
-      const overviewSec = findSection('总览') || sections[0];
-      const statusSec = findSection('现状') || sections[1] || sections[0];
-      const summarySec = sections[sections.length - 1] || sections[0];
+    const doGenerate = async () => {
+      try {
+        const blob = await generateShareCard({
+          siteName: '塔罗匣 · Arcana Box',
+          siteUrl: 'tarotbox.cn',
+          spreadName,
+          theme,
+          cards: cardsWithImg,
+          question: order.question,
+          goldenPhrase,
+          briefAnswer,
+          atmosphere,
+          cardName,
+          summary,
+        }, template);
+        const filename = `arcana-${template}-${order.id.slice(0, 8)}.png`;
+        downloadShareCard(blob, filename);
+      } catch (err: any) {
+        setShareError(err.message || '生成失败');
+      } finally {
+        setSharing(false);
+      }
+    };
 
-      const goldenPhrase = (summarySec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 100);
-      const briefAnswer = (statusSec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 80);
-      const atmosphere = (overviewSec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 120);
-      const summary = (summarySec?.body || '').replace(/\n+/g, ' ').trim().slice(0, 80);
-
-      // 牌图 URL（公版 Rider-Waite）
-      const cardsWithImg = order.cards.map(c => ({
-        id: c.id,
-        name: c.name,
-        orientation: (c.orientation === 'reversed' ? 'reversed' : 'upright') as 'reversed' | 'upright',
-        imageUrl: `/cards/rider-waite/${c.id}.jpg`,
-      }));
-
-      const blob = await generateShareCard({
-        siteName: '塔罗匣 · Arcana Box',
-        siteUrl: 'tarotbox.cn',
-        spreadName,
-        theme,
-        cards: cardsWithImg,
-        question: order.question,
-        goldenPhrase,
-        briefAnswer,
-        atmosphere,
-        cardName,
-        summary,
-      }, template);
-
-      const filename = `arcana-${template}-${order.id.slice(0, 8)}.png`;
-      downloadShareCard(blob, filename);
-    } catch (err: any) {
-      setShareError(err.message || '生成失败');
-    } finally {
-      setSharing(false);
+    // 空闲时生成，不阻塞 UI
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => doGenerate(), { timeout: 3000 });
+    } else {
+      setTimeout(() => doGenerate(), 100);
     }
   };
 
@@ -184,7 +183,7 @@ export default function Reading() {
           setInterpreting(false);
           setError('解读生成超时，请刷新重试');
         }
-      }, 5000);
+      }, 2000);
     } catch (err: any) {
       setError(err.message);
       setInterpreting(false);

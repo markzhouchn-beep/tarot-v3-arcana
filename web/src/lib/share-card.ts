@@ -314,7 +314,7 @@ async function drawQuoteTemplate(ctx: CanvasRenderingContext2D, d: ShareCardData
   // 金句主体（最大字号）
   ctx.fillStyle = T.text;
   ctx.font = '600 54px "Noto Serif SC", serif';
-  y = drawWrappedText(ctx, `"${d.goldenPhrase || d.summary || '每张牌都是一面镜子'}".slice(0, 80)`, W / 2, y, 920, 82);
+  y = drawWrappedText(ctx, `"${(d.goldenPhrase || d.summary || '每张牌都是一面镜子').slice(0, 80)}"`, W / 2, y, 920, 82);
 
   y += 16;
 

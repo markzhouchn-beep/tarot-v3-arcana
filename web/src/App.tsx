@@ -1,74 +1,78 @@
 // ============================================================
-// App.tsx · v3.0 路由（Phase 1：先做 4 个核心页面骨架）
-// 创建：2026-09-01
+// App.tsx · v3.0 路由（代码分割版）
+// 创建：2026-09-01 · 2026-09-06：React.lazy 代码分割
 // ============================================================
 
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+
+// 核心页面：首屏直出（不分割）
 import Hero from './screens/Hero';
 import Spreads from './screens/Spreads';
 import YesNo from './screens/YesNo';
-import Auth from './screens/Auth';
-import AuthCallback from './screens/AuthCallback';
-import AuthSetPassword from './screens/AuthSetPassword';
-import AuthForgot from './screens/AuthForgot';
 import Ask from './screens/Ask';
 import Draw from './screens/Draw';
 import Spread from './screens/Spread';
 import Reading from './screens/Reading';
 import Loading from './screens/Loading';
-import Membership from './screens/Membership';
-import Dashboard from './screens/Dashboard';
-import Checkout from './screens/Checkout';
-import Oracle from './screens/Oracle';
-import OracleChat from './screens/OracleChat';
-import Community from './screens/Community';
-import Cards from './screens/Cards';
-import CardDetail from './screens/CardDetail';
-import Admin from './screens/Admin';
 
-export default function App() {
+// 次要页面：懒加载（按需拉取）
+const Auth = lazy(() => import('./screens/Auth'));
+const AuthCallback = lazy(() => import('./screens/AuthCallback'));
+const AuthSetPassword = lazy(() => import('./screens/AuthSetPassword'));
+const AuthForgot = lazy(() => import('./screens/AuthForgot'));
+const Membership = lazy(() => import('./screens/Membership'));
+const Dashboard = lazy(() => import('./screens/Dashboard'));
+const Checkout = lazy(() => import('./screens/Checkout'));
+const Oracle = lazy(() => import('./screens/Oracle'));
+const OracleChat = lazy(() => import('./screens/OracleChat'));
+const Community = lazy(() => import('./screens/Community'));
+const Cards = lazy(() => import('./screens/Cards'));
+const CardDetail = lazy(() => import('./screens/CardDetail'));
+const Admin = lazy(() => import('./screens/Admin'));
+
+// 通用加载态（体积小，首屏可见）
+function RouteLoader() {
   return (
-    <Routes>
-      <Route path="/" element={<Hero />} />
-      <Route path="/spreads" element={<Spreads />} />
-      <Route path="/yes-no" element={<YesNo />} />
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/auth/set-password" element={<AuthSetPassword />} />
-      <Route path="/auth/forgot" element={<AuthForgot />} />
-
-      <Route path="/ask/:spread" element={<Ask />} />
-      <Route path="/draw/:order_id" element={<Draw />} />
-      <Route path="/draw/:orderId" element={<Draw />} />
-      <Route path="/spread/:id" element={<Spread />} />
-      <Route path="/reading/:id" element={<Reading />} />
-
-      {/* Phase 1.6 已交付 */}
-      <Route path="/loading/:order_id" element={<Loading />} />
-      <Route path="/loading/:orderId" element={<Loading />} />
-      <Route path="/membership" element={<Membership />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/checkout/:type" element={<Checkout />} />
-      <Route path="/oracle" element={<Oracle />} />
-      <Route path="/oracle/:readingId" element={<OracleChat />} />
-      <Route path="/community" element={<Community />} />
-      <Route path="/cards" element={<Cards />} />
-      <Route path="/cards/:id" element={<CardDetail />} />
-      <Route path="/admin" element={<Admin />} />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-fg-faint caps text-sm animate-pulse">加载中…</div>
+    </div>
   );
 }
 
-function ComingSoon({ name }: { name: string }) {
+export default function App() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-md text-center">
-      <div className="caps text-fg-faint mb-md">— Phase 1 后续 —</div>
-      <h2 className="text-3xl font-display text-gradient-gold mb-2xl">{name}页 即将上线</h2>
-      <a href="/" className="btn-secondary">
-        返回首页
-      </a>
-    </div>
+    <Suspense fallback={<RouteLoader />}>
+      <Routes>
+        {/* 核心页面：首屏直出 */}
+        <Route path="/" element={<Hero />} />
+        <Route path="/spreads" element={<Spreads />} />
+        <Route path="/yes-no" element={<YesNo />} />
+        <Route path="/ask/:spread" element={<Ask />} />
+        <Route path="/draw/:order_id" element={<Draw />} />
+        <Route path="/draw/:orderId" element={<Draw />} />
+        <Route path="/spread/:id" element={<Spread />} />
+        <Route path="/reading/:id" element={<Reading />} />
+        <Route path="/loading/:order_id" element={<Loading />} />
+        <Route path="/loading/:orderId" element={<Loading />} />
+
+        {/* 懒加载页面 */}
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/set-password" element={<AuthSetPassword />} />
+        <Route path="/auth/forgot" element={<AuthForgot />} />
+        <Route path="/membership" element={<Membership />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/checkout/:type" element={<Checkout />} />
+        <Route path="/oracle" element={<Oracle />} />
+        <Route path="/oracle/:readingId" element={<OracleChat />} />
+        <Route path="/community" element={<Community />} />
+        <Route path="/cards" element={<Cards />} />
+        <Route path="/cards/:id" element={<CardDetail />} />
+        <Route path="/admin" element={<Admin />} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }

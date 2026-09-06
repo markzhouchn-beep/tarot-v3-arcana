@@ -36,12 +36,12 @@ export default function Loading() {
           // Phase 2.11: AI 失败但已付款
           clearInterval(pollRef.current);
           setAiError(res.ai_error);
-        } else if (count >= 72) {
+        } else if (count >= 180) {
           clearInterval(pollRef.current);
           setError('轮询超时');
         }
       } catch {}
-    }, 5000);
+    }, 2000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [orderId, navigate]);
 
@@ -55,7 +55,7 @@ export default function Loading() {
         </div>
         <h3 className="font-display text-2xl text-gradient-gold mb-sm">确认支付中</h3>
         <p className="text-xs text-fg-secondary font-body italic mb-lg">
-          等待爱发电确认 · 后台每 5 秒查一次
+          等待爱发电确认 · 后台每 2 秒查一次
         </p>
         <div className="caps text-2xs text-fg-faint">
           状态: {status} · 第 {pollCount} 次
