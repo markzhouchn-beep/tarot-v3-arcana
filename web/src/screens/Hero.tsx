@@ -118,7 +118,7 @@ export default function Hero() {
       <header className="text-center mb-3xl animate-fade-in">
         <div className="caps mb-md">— Mystic Vintage Dark —</div>
         <h1 className="text-5xl text-gradient-gold mb-md animate-float-y">
-          ✦ ARCANA ai
+          ✦ Arcana Box
         </h1>
         <h2 className="text-xl font-display text-fg-secondary tracking-wide mb-xs">
           星 语 塔 罗

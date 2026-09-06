@@ -115,8 +115,8 @@ export default function Reading() {
       }));
 
       const blob = await generateShareCard({
-        siteName: 'ARCANA 星语塔罗',
-        siteUrl: 'tarot.layershop.store',
+        siteName: '塔罗匣 · Arcana Box',
+        siteUrl: 'tarotbox.cn',
         spreadName,
         theme,
         cards: cardsWithImg,
@@ -224,7 +224,7 @@ export default function Reading() {
         const r2: any = await fetch('/api/auth/set-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ temp_token: res.temp_token, password: 'Arcana' + Date.now() }),
+          body: JSON.stringify({ temp_token: res.temp_token, password: 'TarotBox' + Date.now() }),
         }).then(d => d.json());
         if (r2.ok) {
           setUserEmail(r2.user);

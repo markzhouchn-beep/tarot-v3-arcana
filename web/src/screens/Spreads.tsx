@@ -83,7 +83,7 @@ export default function Spreads() {
     const cur = themeTitle[theme] || '选择牌阵';
     const kw = themeToKw[theme] || themeToKw.all;
 
-    document.title = `${cur} · 塔罗牌阵大全 | ARCANA ai 星语塔罗`;
+    document.title = `${cur} · 塔罗牌阵大全 | 塔罗匣 Arcana Box`;
 
     setMeta('description',
       `${cur}：${kw}。1 张每日指引 / 3 张过去现在未来 / 5 张恋人十字暗恋透视 / 7 张七脉轮 / 10 张凯尔特十字牌阵，覆盖感情、事业、财富、自我四大主题。在线塔罗占卜，AI 塔罗牌解读。`);

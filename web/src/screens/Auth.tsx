@@ -201,7 +201,7 @@ export default function Auth() {
 
       <div className="text-center mb-2xl mt-lg">
         <div className="caps text-fg-faint mb-xs">— Welcome —</div>
-        <h1 className="text-3xl text-gradient-gold mb-md">✦ ARCANA ai</h1>
+        <h1 className="text-3xl text-gradient-gold mb-md">✦ Arcana Box</h1>
         <p className="text-sm text-fg-secondary font-body italic">
           加入，解锁全部高级牌阵与追问
         </p>

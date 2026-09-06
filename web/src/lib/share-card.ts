@@ -256,11 +256,11 @@ async function drawCardGrid(
 // === 通用 header / footer ===
 
 function drawHeader(ctx: CanvasRenderingContext2D, d: ShareCardData) {
-  // 顶部：站点名 + 主题符号
+  // 顶部：站点名 + 主题符号（品牌名放大）
   ctx.fillStyle = T.gold;
-  ctx.font = '700 36px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+  ctx.font = '700 48px "PingFang SC", "Noto Sans CJK SC", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('✦ ARCANA 星语塔罗 ✦', W / 2, 140);
+  ctx.fillText('✦ 塔罗匣 · Arcana Box ✦', W / 2, 140);
 
   ctx.fillStyle = T.textFaint;
   ctx.font = '400 22px sans-serif';
@@ -281,15 +281,15 @@ function drawHeader(ctx: CanvasRenderingContext2D, d: ShareCardData) {
 }
 
 function drawFooter(ctx: CanvasRenderingContext2D, d: ShareCardData) {
-  // 底部品牌
+  // 底部品牌（放大）
   ctx.fillStyle = T.gold;
-  ctx.font = '600 32px "PingFang SC", sans-serif';
+  ctx.font = '600 38px "PingFang SC", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`🌙 ${d.siteName}`, W / 2, H - 160);
+  ctx.fillText(`🌙 塔罗匣 · Arcana Box`, W / 2, H - 160);
 
   ctx.fillStyle = T.textFaint;
   ctx.font = '400 22px sans-serif';
-  ctx.fillText(`扫码解锁你的牌阵 · ${d.siteUrl}`, W / 2, H - 120);
+  ctx.fillText(`扫码解锁你的牌阵 · tarotbox.cn`, W / 2, H - 120);
 }
 
 // ============================================================

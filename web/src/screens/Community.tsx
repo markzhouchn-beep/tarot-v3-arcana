@@ -107,7 +107,7 @@ function FeaturedCard({ item }: { item: FeaturedItem }) {
       </div>
       <div className="border-l-2 border-primary/40 pl-md">
         <div className="caps text-2xs text-primary mb-xs">
-          — ARCANA · {item.depth_layer ? depthLabels[item.depth_layer] : '回答'} —
+          — 塔罗匣 · {item.depth_layer ? depthLabels[item.depth_layer] : '回答'} —
         </div>
         <div className="text-sm text-fg-secondary font-body leading-relaxed whitespace-pre-line">
           {item.answer}

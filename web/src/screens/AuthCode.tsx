@@ -112,7 +112,7 @@ export default function AuthCode() {
 
       <div className="text-center mb-2xl mt-lg">
         <div className="caps text-fg-faint mb-xs">— Sign in with code —</div>
-        <h1 className="text-2xl text-gradient-gold mb-md">✦ ARCANA ai</h1>
+        <h1 className="text-2xl text-gradient-gold mb-md">✦ Arcana Box</h1>
       </div>
 
       {step === 'email' && (
