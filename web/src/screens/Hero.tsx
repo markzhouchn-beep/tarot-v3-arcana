@@ -253,13 +253,14 @@ export default function Hero() {
         </button>
       </section>
 
-      {/* 塔罗百科 · 静态 SEO 页入口 */}
+      {/* 塔罗百科 · 78 张含义 */}
       <section className="mt-3xl mb-xl">
         <div className="caps text-fg-faint text-center mb-md">— 塔罗百科 —</div>
         <div className="grid grid-cols-1 gap-xs">
           <a
-            href="/tarot-cards.html"
-            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline"
+            href="/cards"
+            onClick={(e) => { e.preventDefault(); navigate('/cards'); }}
+            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline cursor-pointer"
           >
             <div className="flex items-center gap-md">
               <span className="text-xl">✦</span>
@@ -271,27 +272,29 @@ export default function Hero() {
             <span className="text-fg-faint text-xs">→</span>
           </a>
           <a
-            href="/spread-guide.html"
-            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline"
+            href="/community"
+            onClick={(e) => { e.preventDefault(); navigate('/community'); }}
+            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline cursor-pointer"
           >
             <div className="flex items-center gap-md">
               <span className="text-xl">◈</span>
               <div>
-                <div className="font-display text-sm text-fg">塔罗牌阵教程</div>
-                <div className="text-2xs text-fg-faint font-body">13 种牌阵 · 凯尔特十字 / 三张 / 单张</div>
+                <div className="font-display text-sm text-fg">社区精选追问</div>
+                <div className="text-2xs text-fg-faint font-body">看看大家都在问什么 · 公开追问</div>
               </div>
             </div>
             <span className="text-fg-faint text-xs">→</span>
           </a>
           <a
-            href="/faq.html"
-            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline"
+            href="/membership"
+            onClick={(e) => { e.preventDefault(); navigate('/membership'); }}
+            className="panel p-md flex items-center justify-between transition-all duration-fast hover:border-primary hover:shadow-glow-gold no-underline cursor-pointer"
           >
             <div className="flex items-center gap-md">
-              <span className="text-xl">✧</span>
+              <span className="text-xl">💎</span>
               <div>
-                <div className="font-display text-sm text-fg">塔罗占卜常见问题</div>
-                <div className="text-2xs text-fg-faint font-body">Yes/No · 感情 · 凯尔特 · 准吗</div>
+                <div className="font-display text-sm text-fg">会员套餐</div>
+                <div className="text-2xs text-fg-faint font-body">¥19.9/月 起 · 无限追问 + 全部高级牌阵</div>
               </div>
             </div>
             <span className="text-fg-faint text-xs">→</span>

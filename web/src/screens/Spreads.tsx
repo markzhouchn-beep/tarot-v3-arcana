@@ -122,6 +122,31 @@ export default function Spreads() {
         ))}
       </div>
 
+      {/* 首单免费横幅 */}
+      {!user && (
+        <div className="panel p-md bg-gradient-to-r from-green-500/20 to-emerald-600/10 border border-green-500/40 mb-lg">
+          <div className="flex items-center gap-md">
+            <div className="text-2xl">🎁</div>
+            <div className="flex-1">
+              <div className="font-display text-sm text-green-400 mb-0.5">
+                新用户体验
+              </div>
+              <div className="text-xs text-fg-secondary">
+                你的第一次单张牌解读 <span className="text-green-400 font-bold">完全免费</span>，无需注册即可领取。
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                document.querySelector('[data-spread-id="love-single"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }}
+              className="text-xxs text-green-400 hover:text-green-300 whitespace-nowrap"
+            >
+              立即领取 →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 牌阵列表 */}
       {loading ? (
         <div className="text-center py-3xl text-fg-faint">
@@ -182,7 +207,14 @@ function SpreadCard({
 
 function SpreadContent({ spread }: { spread: Spread }) {
   return (
-    <div>
+    <div className="relative" data-spread-id={spread.id}>
+      {/* 首单免费角标 */}
+      {spread.free_first && (
+        <div className="absolute -top-2 -right-2 px-2 py-1 bg-gradient-to-br from-green-500 to-emerald-600 text-white text-xxs font-bold rounded-full shadow-lg z-10">
+          🎁 首单免费
+        </div>
+      )}
+
       <div className="flex items-start justify-between mb-xs">
         <h3 className="font-display text-xl text-fg">{spread.name}</h3>
         <div className="caps text-fg-faint text-2xs whitespace-nowrap">
@@ -205,7 +237,7 @@ function SpreadContent({ spread }: { spread: Spread }) {
             {TIER_LABEL[spread.tier_required]}
           </span>
         </div>
-        {spread.price > 0 && (
+        {spread.price > 0 && !spread.free_first && (
           <div className="flex items-baseline gap-xs">
             <span className="num-display text-lg text-primary">¥{spread.price}</span>
             {spread.original_price && (
@@ -216,7 +248,10 @@ function SpreadContent({ spread }: { spread: Spread }) {
           </div>
         )}
         {spread.free_first && (
-          <div className="caps text-2xs text-accent-green">首单免费</div>
+          <div className="flex items-baseline gap-xs">
+            <span className="num-display text-lg text-green-400">免费</span>
+            <span className="num-display text-xs text-fg-faint line-through">¥{spread.original_price || spread.price}</span>
+          </div>
         )}
       </div>
 

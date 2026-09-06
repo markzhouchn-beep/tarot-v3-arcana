@@ -23,6 +23,8 @@ import Checkout from './screens/Checkout';
 import Oracle from './screens/Oracle';
 import OracleChat from './screens/OracleChat';
 import Community from './screens/Community';
+import Cards from './screens/Cards';
+import CardDetail from './screens/CardDetail';
 import Admin from './screens/Admin';
 
 export default function App() {
@@ -53,6 +55,8 @@ export default function App() {
       <Route path="/oracle" element={<Oracle />} />
       <Route path="/oracle/:readingId" element={<OracleChat />} />
       <Route path="/community" element={<Community />} />
+      <Route path="/cards" element={<Cards />} />
+      <Route path="/cards/:id" element={<CardDetail />} />
       <Route path="/admin" element={<Admin />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />

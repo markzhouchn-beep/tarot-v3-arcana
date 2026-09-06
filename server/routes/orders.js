@@ -80,10 +80,28 @@ router.post('/create', optionalAuth, (req, res) => {
       }
     }
 
+    // 🔥 首单免费：标记了 free_first 的牌阵（仅 love-single），且本设备/用户没下过单
+    let isFreeFirst = false;
+    if (spread_type === 'love-single' && !isMember) {
+      // 查该设备或用户是否已有任何非 cancelled 订单
+      const priorCount = db.prepare(`
+        SELECT COUNT(*) as n FROM orders
+        WHERE status != 'cancelled' AND status != 'refunded'
+          AND (
+            (device_id = ? AND ? IS NOT NULL) OR
+            (user_id = ? AND ? IS NOT NULL)
+          )
+      `).get(device_id || null, device_id || null, req.user?.id || null, req.user?.id || null);
+      if (!priorCount || priorCount.n === 0) {
+        isFreeFirst = true;
+      }
+    }
+
     const now = Date.now();
-    const initialStatus = isMember ? 'paid' : 'pending';
-    const initialPaidAmount = isMember ? 0 : 0;
-    const paidAt = isMember ? now : null;
+    const finalAmount = isFreeFirst ? 0 : amount;
+    const initialStatus = (isMember || isFreeFirst) ? 'paid' : 'pending';
+    const initialPaidAmount = (isMember || isFreeFirst) ? 0 : 0;
+    const paidAt = (isMember || isFreeFirst) ? now : null;
 
     db.prepare(`
       INSERT INTO orders (
@@ -99,7 +117,7 @@ router.post('/create', optionalAuth, (req, res) => {
       spread_theme || null,
       question || '',
       JSON.stringify(cards),
-      amount,
+      finalAmount,
       initialStatus,
       initialPaidAmount,
       outTradeNo,
@@ -119,39 +137,43 @@ router.post('/create', optionalAuth, (req, res) => {
       properties: {
         order_id: orderId,
         tier,
-        amount,
+        amount: finalAmount,
         is_member: isMember,
+        is_free_first: isFreeFirst,
       },
     });
 
-    // 会员直接下单 → 视作已付费
-    if (isMember) {
+    // 会员 / 首单免费 → 视作已付费
+    if (isMember || isFreeFirst) {
       trackEvent('order_paid', {
         userId: req.user?.id || null,
         deviceId: device_id || null,
-        properties: { order_id: orderId, amount: 0, source: 'membership' },
+        properties: { order_id: orderId, amount: 0, source: isFreeFirst ? 'free_first' : 'membership' },
       });
     }
 
-    // 会员：异步触发 AI 解读（不阻塞响应）
-    if (isMember) {
-      console.log(`[orders] ✅ 会员 (${memberTier}) 直接下单: ${orderId}, 跳过支付`);
-      // 后台异步触发解读
+    // 会员 / 首单免费：异步触发 AI 解读（不阻塞响应）
+    if (isMember || isFreeFirst) {
+      const reason = isFreeFirst ? '首单免费' : `会员 (${memberTier})`;
+      console.log(`[orders] ✅ ${reason} 直接下单: ${orderId}, 跳过支付`);
       triggerAIReading(orderId).catch((err) => {
         console.error(`[orders] 后台 AI 触发失败: ${orderId}`, err);
       });
     }
 
-    const payUrl = isMember ? null : (skuId ? buildProductPayUrl(skuId, orderId) : null);
+    // 支付 URL：会员/首单免费时不需要
+    const payUrl = (isMember || isFreeFirst) ? null : (skuId ? buildProductPayUrl(skuId, orderId) : null);
 
     res.json({
       ok: true,
       orderId,
       outTradeNo,
-      amount,
+      amount: finalAmount,
+      originalAmount: amount,
       afdianPayUrl: payUrl,
       isTest,
       isMember,
+      isFreeFirst,
       memberTier,
     });
   } catch (err) {
