@@ -54,7 +54,6 @@ export default function YesNo() {
   const [question, setQuestion] = useState(() => searchParams.get('question') || '');
   const [result, setResult] = useState<DrawResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [quickDancing, setQuickDancing] = useState(false); // quick 模式抽牌动画
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,17 +68,10 @@ export default function YesNo() {
     if (q) setQuestion(q);
   }, [searchParams]);
 
-  // quick=1：首页直接进入，显示抽牌动画后再出结果
+  // quick=1：首页直接进入，只预填问题，不自动抽牌，等用户点按钮
   useEffect(() => {
     if (searchParams.get('quick') === '1' && !result && !loading) {
-      const q = '我接下来需要注意什么？';
-      setQuestion(q);
-      setQuickDancing(true);
-      // 1.5s 抽牌动画
-      setTimeout(() => {
-        setQuickDancing(false);
-        handleDraw(q);
-      }, 1500);
+      setQuestion('我接下来需要注意什么？');
     }
   }, []);
 
@@ -204,19 +196,6 @@ export default function YesNo() {
 
       {!result ? (
         <div className="space-y-lg">
-          {/* quick 模式：抽牌动画 */}
-          {quickDancing ? (
-            <div className="flex flex-col items-center justify-center py-3xl animate-fade-in">
-              <div className="text-7xl mb-xl animate-float-y">🂿</div>
-              <div className="font-display text-2xl text-gradient-gold mb-md animate-pulse">
-                正在为你抽牌…
-              </div>
-              <p className="text-sm text-fg-secondary font-body italic">
-                「我接下来需要注意什么？」
-              </p>
-            </div>
-          ) : (
-          <>
           {/* 牌背（v2.0 card-back-rare.png） */}
           <div className="flex justify-center my-2xl">
             <CardBack size="md" glowing />
@@ -249,8 +228,6 @@ export default function YesNo() {
           <Button onClick={handleDraw} loading={loading} fullWidth size="lg">
             ✦ 抽牌
           </Button>
-          </>
-          )}
         </div>
       ) : (
         <ResultView
