@@ -9,7 +9,6 @@ import Spreads from './screens/Spreads';
 import YesNo from './screens/YesNo';
 import Auth from './screens/Auth';
 import AuthCallback from './screens/AuthCallback';
-import AuthCode from './screens/AuthCode';
 import AuthSetPassword from './screens/AuthSetPassword';
 import AuthForgot from './screens/AuthForgot';
 import Ask from './screens/Ask';
@@ -35,8 +34,6 @@ export default function App() {
       <Route path="/yes-no" element={<YesNo />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      {/* v3.0.1 C 方案 */}
-      <Route path="/auth/code" element={<AuthCode />} />
       <Route path="/auth/set-password" element={<AuthSetPassword />} />
       <Route path="/auth/forgot" element={<AuthForgot />} />
 

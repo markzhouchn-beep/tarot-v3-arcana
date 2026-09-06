@@ -128,23 +128,23 @@ export default function Hero() {
         </p>
       </header>
 
-      {/* 主 CTA · Yes/No 免费抽 */}
+      {/* 主 CTA · 零门槛立即出答案 */}
       <section className="mb-3xl">
         <button
-          onClick={() => navigate('/yes-no')}
-          className="w-full panel p-xl text-left transition-all duration-fast hover:border-primary hover:shadow-glow-gold"
+          onClick={() => navigate('/yes-no?quick=1')}
+          className="w-full panel p-2xl text-center transition-all duration-fast hover:border-primary hover:shadow-glow-gold bg-bg-occult animate-fade-in"
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="caps mb-xs text-primary">免费 · 每日一次</div>
-              <h3 className="font-display text-2xl text-fg mb-xs">
-                一张牌，回答你心中那个问题
-              </h3>
-              <p className="text-sm text-fg-faint font-body">
-                无需登录 · 抽 1 张牌立即看到答案
-              </p>
-            </div>
-            <div className="text-3xl opacity-40 group-hover:opacity-100">→</div>
+          {/* 牌背装饰 */}
+          <div className="text-5xl mb-lg animate-float-y">🂿</div>
+          <div className="caps text-primary mb-sm">免费 · 无需注册</div>
+          <h3 className="font-display text-3xl text-fg mb-sm">
+            免费抽一张 · 立即看答案
+          </h3>
+          <p className="text-sm text-fg-faint font-body mb-lg">
+            点击即抽 · 零门槛 · 30 秒内看到你的解读
+          </p>
+          <div className="inline-block px-lg py-sm bg-primary text-bg-canvas font-display text-lg rounded">
+            ✦ 立即开始 →
           </div>
         </button>
       </section>

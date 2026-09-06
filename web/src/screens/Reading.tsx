@@ -16,7 +16,7 @@ import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
 import { CardFace } from '../components/CardFace';
-import { ordersApi } from '../lib/api';
+import { ordersApi, authApi } from '../lib/api';
 import { generateShareCard, downloadShareCard } from '../lib/share-card';
 
 interface Order {
@@ -44,6 +44,13 @@ export default function Reading() {
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [userEmail, setUserEmail] = useState<any>(null);
+  const [emailInput, setEmailInput] = useState('');
+  const [emailStep, setEmailStep] = useState<'input' | 'code' | 'done'>('input');
+  const [emailMsg, setEmailMsg] = useState<string | null>(null);
+  const [emailCode, setEmailCode] = useState(['', '', '', '', '', '']);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
 
   // 复制链接
   const handleCopyLink = async () => {
@@ -132,6 +139,9 @@ export default function Reading() {
 
   // 加载订单
   useEffect(() => {
+    // 取当前用户
+    authApi.me().then((d: any) => setUserEmail(d?.user || null)).catch(() => {});
+
     if (!id) return;
     ordersApi.get(id)
       .then(o => {
@@ -143,6 +153,13 @@ export default function Reading() {
       })
       .catch(err => { setError(err.message); setLoading(false); });
   }, [id]);
+
+  // 倒计时
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn(resendIn - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
   // 启动解读
   const startInterpret = async (orderId: string) => {
@@ -175,6 +192,56 @@ export default function Reading() {
   };
 
   // 追问已迁移到 /oracle/:orderId（删除 mock）
+
+  // ── 留邮箱解锁追问 ──
+  const handleSendEmail = async () => {
+    if (!emailInput.includes('@')) { setEmailMsg('请输入有效邮箱'); return; }
+    setEmailLoading(true);
+    setEmailMsg(null);
+    try {
+      const res: any = await authApi.sendCode(emailInput, 'login');
+      setEmailMsg(res.dev_code ? `已发送（开发：${res.dev_code}）` : `已发送至 ${emailInput}`);
+      setEmailStep('code');
+      setResendIn(60);
+    } catch (err: any) {
+      setEmailMsg(err.message);
+    } finally { setEmailLoading(false); }
+  };
+
+  const handleVerifyEmailCode = async () => {
+    const codeStr = emailCode.join('');
+    if (codeStr.length !== 6) { setEmailMsg('请输入6位验证码'); return; }
+    setEmailLoading(true);
+    setEmailMsg(null);
+    try {
+      const res: any = await authApi.verifyCode(emailInput, codeStr);
+      if (res.already_logged_in) {
+        setUserEmail(res.user);
+        setEmailStep('done');
+        setEmailMsg('已登录！可以追问啦 🌙');
+      } else if (res.temp_token) {
+        // 设置密码后登录
+        const r2: any = await fetch('/api/auth/set-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ temp_token: res.temp_token, password: 'Arcana' + Date.now() }),
+        }).then(d => d.json());
+        if (r2.ok) {
+          setUserEmail(r2.user);
+          setEmailStep('done');
+          setEmailMsg('注册成功！可以追问啦 🌙');
+        } else { setEmailMsg(r2.message); }
+      } else { setEmailMsg('验证失败，请重试'); }
+    } catch (err: any) { setEmailMsg(err.message); }
+    finally { setEmailLoading(false); }
+  };
+
+  const handleCodeChange = (idx: number, v: string) => {
+    const digit = v.replace(/\D/g, '').slice(0, 1);
+    const next = [...emailCode];
+    next[idx] = digit;
+    setEmailCode(next);
+  };
 
   if (loading) {
     return (
@@ -334,12 +401,74 @@ export default function Reading() {
             <p className="text-sm text-fg-secondary font-body mb-md leading-relaxed">
               解读是"现在"，追问 Oracle 还能问 <span className="text-fg">「他 / 这件事 / 接下来怎么办」</span>。5 轮对话，让塔罗师继续推演。
             </p>
-            <Button onClick={() => navigate(`/oracle/${id}`)} variant="primary" size="md" fullWidth>
-              🌙 追问 Oracle · 5 轮对话
-            </Button>
-            <p className="caps text-2xs text-fg-faint text-center mt-xs">
-              会员可无限追问 · 访客 2 次 / 月
-            </p>
+
+            {userEmail ? (
+              /* 已登录 → 直接追问 */
+              <Button onClick={() => navigate(`/oracle/${id}`)} variant="primary" size="md" fullWidth>
+                🌙 追问 Oracle · 5 轮对话
+              </Button>
+            ) : emailStep === 'done' ? (
+              /* 邮箱验证完成 */
+              <Button onClick={() => navigate(`/oracle/${id}`)} variant="primary" size="md" fullWidth>
+                🌙 追问 Oracle · 5 轮对话
+              </Button>
+            ) : emailStep === 'code' ? (
+              /* 输入验证码 */
+              <div>
+                <p className="text-xs text-fg-secondary mb-sm text-center">
+                  验证码已发至 <span className="text-primary">{emailInput}</span>
+                </p>
+                <div className="flex gap-1 justify-center mb-sm">
+                  {[0,1,2,3,4,5].map(i => (
+                    <input
+                      key={i}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={emailCode[i]}
+                      onChange={e => handleCodeChange(i, e.target.value)}
+                      className="input text-center text-xl font-bold w-10 h-12"
+                    />
+                  ))}
+                </div>
+                <Button onClick={handleVerifyEmailCode} variant="primary" size="md" fullWidth loading={emailLoading}>
+                  验证并追问
+                </Button>
+                {emailMsg && <p className="text-xs text-center text-primary mt-xs">{emailMsg}</p>}
+                <p className="text-2xs text-fg-faint text-center mt-xs">
+                  {resendIn > 0 ? `${resendIn}s后可重发` : (
+                    <button onClick={handleSendEmail} className="text-primary hover:underline">重新发送</button>
+                  )}
+                </p>
+              </div>
+            ) : (
+              /* 留邮箱解锁 */
+              <div>
+                <p className="text-sm text-fg-secondary font-body mb-md">
+                  留下邮箱，免费获得 <span className="text-primary">5 次追问</span> · 无需记住密码
+                </p>
+                <div className="flex gap-sm">
+                  <input
+                    type="email"
+                    className="input flex-1"
+                    placeholder="your@email.com"
+                    value={emailInput}
+                    onChange={e => setEmailInput(e.target.value.toLowerCase())}
+                    onKeyDown={e => e.key === 'Enter' && handleSendEmail()}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                  <Button onClick={handleSendEmail} variant="primary" size="md" loading={emailLoading}>
+                    获取追问
+                  </Button>
+                </div>
+                {emailMsg && <p className="text-xs text-center text-primary mt-xs">{emailMsg}</p>}
+                <p className="caps text-2xs text-fg-faint text-center mt-sm">
+                  访客每月 2 次追问 · 登录后可升级会员
+                </p>
+              </div>
+            )}
           </div>
 
           {/* 行动按钮 */}

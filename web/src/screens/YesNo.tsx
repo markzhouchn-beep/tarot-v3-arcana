@@ -68,14 +68,29 @@ export default function YesNo() {
     if (q) setQuestion(q);
   }, [searchParams]);
 
+  // quick=1：首页直接进入，自动抽牌（零门槛）
+  useEffect(() => {
+    if (searchParams.get('quick') === '1' && !result && !loading) {
+      setQuestion('我接下来需要注意什么？');
+      // 等 state 更新后自动触发抽牌
+      setTimeout(() => {
+        const questionInput = document.querySelector<HTMLInputElement>('[data-question-input]');
+        if (questionInput) questionInput.value = '我接下来需要注意什么？';
+        handleDraw('我接下来需要注意什么？');
+      }, 300);
+    }
+  }, []);
+
   const refreshQuota = () => {
     yesNoApi.quota(deviceId)
       .then(setQuota)
       .catch(() => setQuota({ used: 0, limit: 1, remaining: 1 }));
   };
 
-  const handleDraw = async () => {
-    if (!question.trim()) {
+  const handleDraw = async (overrideQuestion?: string | React.MouseEvent) => {
+    // 兼容 Button onClick（传 MouseEvent）和直接调用（传 string）
+    const q = (typeof overrideQuestion === 'string' ? overrideQuestion : question).trim();
+    if (!q) {
       setError('请输入你的问题');
       return;
     }
@@ -93,7 +108,7 @@ export default function YesNo() {
     setError(null);
     setLoading(true);
     try {
-      const r = await yesNoApi.draw(question.trim(), deviceId);
+      const r = await yesNoApi.draw(q, deviceId);
       setResult(r);
       setQuestion('');
       refreshQuota();
@@ -198,6 +213,7 @@ export default function YesNo() {
               你想问什么
             </label>
             <textarea
+              data-question-input
               className="input min-h-[100px] resize-none"
               placeholder="例如：他喜欢我吗？ / 我应该换工作吗？"
               maxLength={500}

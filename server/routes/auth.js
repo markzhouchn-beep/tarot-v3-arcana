@@ -233,8 +233,10 @@ router.post('/login', async (req, res) => {
 
     // Bug fix: email 必须 lowercase（DB 存的是小写，否则大小写不匹配 → INVALID_CREDENTIALS）
     const normalizedEmail = String(email).trim().toLowerCase();
+    console.log(`[login] raw_email=${email} normalized=${normalizedEmail} pwd_len=${password?.length}`);
     const user = db.prepare(`SELECT * FROM users WHERE email = ?`).get(normalizedEmail);
     if (!user || !user.password_hash) {
+      console.log(`[login] user not found: normalized=${normalizedEmail}, has_pwd=${user?.password_hash ? 'yes' : 'no'}`);
       return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
     }
 
