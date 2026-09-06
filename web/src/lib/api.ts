@@ -297,6 +297,14 @@ export const adminApi = {
     body: JSON.stringify({ admin_note }),
     headers: getAdminAuthHeader(),
   }),
+
+  // 三个新分析 Tab（2026-09-06）
+  funnel: () => request('/admin/stats/funnel', { headers: getAdminAuthHeader() }),
+  yesnoStats: () => request('/admin/stats/yesno', { headers: getAdminAuthHeader() }),
+  anonymousStats: () => request('/admin/stats/anonymous', { headers: getAdminAuthHeader() }),
+
+  // 操作日志（2026-09-06）
+  actionLogs: () => request('/admin/action-logs', { headers: getAdminAuthHeader() }),
 };
 
 // ============================================================

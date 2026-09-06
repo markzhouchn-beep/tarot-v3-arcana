@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { config } from '../lib/config.js';
+import { trackEvent } from '../lib/events.js';
 import { sendMagicLink, sendEmail } from '../lib/mailer.js';
 import * as magicCode from '../lib/magic-code.js';
 import { codeEmail } from '../lib/email-templates.js';
@@ -84,6 +85,14 @@ router.get('/verify', (req, res) => {
         INSERT INTO users (id, email, tier, invite_code, email_verified, email_verified_at, created_at)
         VALUES (?, ?, 'registered', ?, 1, ?, ?)
       `).run(userId, link.email, inviteCode, Date.now(), Date.now());
+
+      // 埋点：用户注册
+      trackEvent('user_registered', {
+        userId,
+        deviceId: req.headers['x-device-id'] || null,
+        pageUrl: req.headers.referer || null,
+        properties: { source: 'magic_link' },
+      });
 
       // Phase 4: 如果有邀请码（存于 magic_links 表），事务内关联邀请 + 发奖
       // 以 magic_links 记录为准（更可靠，不依赖 query string）
@@ -165,6 +174,14 @@ router.post('/register', async (req, res) => {
       INSERT INTO users (id, email, password_hash, tier, invite_code, email_verified, created_at)
       VALUES (?, ?, ?, 'registered', ?, 0, ?)
     `).run(userId, email, passwordHash, inviteCode, Date.now());
+
+    // 埋点：邮箱密码注册
+    trackEvent('user_registered', {
+      userId,
+      deviceId: req.headers['x-device-id'] || null,
+      pageUrl: req.headers.referer || null,
+      properties: { source: 'password', invite_code: invite_code || null },
+    });
 
     // Phase 4: 邮箱密码注册时事务内关联邀请 + 发奖（不依赖 verify）
     if (invite_code) {

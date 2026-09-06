@@ -62,15 +62,10 @@ export default function Checkout() {
         setError('支付链接未生成');
         return;
       }
-      const win = window.open('about:blank', '_blank');
-      if (!win) {
-        setError('浏览器拦截了弹出窗口');
-        return;
-      }
-      win.document.write('<p style="font-family:sans-serif;padding:40px;text-align:center;">正在跳转到爱发电支付...</p>');
-      setTimeout(() => { win.location.href = payUrl; }, 100);
       // 跳到 spread 页启动轮询
       navigate(`/spread/${result.orderId}`);
+      // 同步跳转到爱发电支付（不 hack，不弹窗）
+      setTimeout(() => { window.location.href = payUrl; }, 300);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -107,8 +102,15 @@ export default function Checkout() {
         💎 立即购买 · 跳转爱发电
       </Button>
 
-      <div className="caps text-2xs text-fg-faint text-center mt-md">
-        安全支付 · 爱发电提供
+      {/* 信任标识 */}
+      <div className="mt-md flex items-center justify-center gap-sm text-xxs text-fg-faint">
+        <span className="inline-flex items-center gap-xs">
+          <span className="text-secondary">🛡️</span>
+          <span>由爱发电 afdian.net 担保支付</span>
+        </span>
+      </div>
+      <div className="caps text-2xs text-fg-faint text-center mt-xs">
+        支持微信 · 支付宝 · 支付完成自动返回
       </div>
     </Layout>
   );

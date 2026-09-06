@@ -10,6 +10,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import db from '../db.js';
 import { verifyWebhook, verifyWebhookRSA, inferSubscriptionTier } from '../lib/afdian.js';
+import { trackEvent } from '../lib/events.js';
 import { activateSubscription } from './membership.js';
 import { triggerAIReading } from './orders.js';
 import { grantFirstPaidRewardForOrder } from '../lib/invite.js';
@@ -198,6 +199,17 @@ function handleProductOrder({ order_id, sku_id, out_trade_no, total_amount }) {
   SET status = 'paid', paid_at = ?, afdian_out_trade_no = ?, paid_amount = ?, updated_at = ?
   WHERE id = ?
   `).run(Date.now(), out_trade_no, total_amount != null ? parseFloat(total_amount) : null, Date.now(), order_id);
+
+  // 埋点：爱发电订单支付
+  trackEvent('order_paid', {
+    userId: order.user_id,
+    deviceId: order.device_id,
+    properties: {
+      order_id,
+      amount: total_amount ? parseFloat(total_amount) : null,
+      source: 'afdian_webhook',
+    },
+  });
 
   console.log(`[afdian-webhook] ✅ 订单 ${order_id} 已标 paid，触发 AI 解读`);
 

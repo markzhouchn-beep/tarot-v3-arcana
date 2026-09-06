@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import db from '../db.js';
 import { config } from '../lib/config.js';
 import { optionalAuth, requireAuth } from '../middleware/auth.js';
+import { trackEvent } from '../lib/events.js';
 import { buildProductPayUrl, queryOrder } from '../lib/afdian.js';
 import { drawCards } from '../lib/tarot-knowledge.js';
 import { callAI } from '../lib/ai.js';
@@ -109,6 +110,28 @@ router.post('/create', optionalAuth, (req, res) => {
       now,
       paidAt,
     );
+
+    // 埋点：订单创建
+    trackEvent('order_created', {
+      userId: req.user?.id || null,
+      deviceId: device_id || null,
+      pageUrl: req.headers.referer || null,
+      properties: {
+        order_id: orderId,
+        tier,
+        amount,
+        is_member: isMember,
+      },
+    });
+
+    // 会员直接下单 → 视作已付费
+    if (isMember) {
+      trackEvent('order_paid', {
+        userId: req.user?.id || null,
+        deviceId: device_id || null,
+        properties: { order_id: orderId, amount: 0, source: 'membership' },
+      });
+    }
 
     // 会员：异步触发 AI 解读（不阻塞响应）
     if (isMember) {
@@ -351,6 +374,14 @@ router.post('/:id/reconcile', async (req, res) => {
     triggerAIReading(order.id).catch((err) => console.error('[reconcile] trigger error:', err));
 
     console.log(`[reconcile] ✅ 命中: order=${order.id}, amount=${paidAmount}`);
+
+    // 埋点：订单支付
+    trackEvent('order_paid', {
+      userId: order.user_id,
+      deviceId: order.device_id,
+      properties: { order_id: order.id, amount: paidAmount, source: 'reconcile' },
+    });
+
     return res.json({
       ok: true,
       status: 'paid',

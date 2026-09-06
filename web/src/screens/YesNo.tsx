@@ -183,7 +183,12 @@ export default function YesNo() {
           </Button>
         </div>
       ) : (
-        <ResultView result={result} onAgain={handleReset} onClose={() => navigate('/')} onUnlock={() => navigate('/spreads?theme=love')} />
+        <ResultView
+          result={result}
+          onAgain={handleReset}
+          onClose={() => navigate('/')}
+          onUnlock={() => navigate(`/ask/three?question=${encodeURIComponent(result.question)}&from=yesno`)}
+        />
       )}
     </Layout>
   );
@@ -277,17 +282,27 @@ function ResultView({
       {/* 转化引导 · 主 CTA（Yes/No 转付费解读） */}
       <div className="space-y-md">
         <div className="panel p-lg bg-bg-occult border-primary/40">
-          <div className="caps text-primary mb-xs">— 想看完整解读 —</div>
+          <div className="caps text-primary mb-xs">— 用你的这个问题生成完整解读 —</div>
           <p className="text-sm text-fg-secondary font-body mb-md leading-relaxed">
-            一张牌只是一个方向。完整解读包含状态分析、可能发展、行动建议 —— 只需 ¥1.9。
+            一张牌只是方向。<strong className="text-fg">AI 用 3 张牌</strong>深度分析：<span className="text-fg">过去 · 现在 · 未来</span>，附行动建议。
           </p>
+          <div className="flex items-center justify-between mb-md">
+            <div>
+              <div className="font-display text-2xl text-gradient-gold">¥1.9</div>
+              <div className="caps text-2xs text-fg-faint">单次 · 永久保存</div>
+            </div>
+            <div className="text-right text-xxs text-fg-faint">
+              <div>限时首单体验价</div>
+              <div className="text-secondary line-through">原价 ¥9.9</div>
+            </div>
+          </div>
           <Button
             onClick={onUnlock}
             variant="primary"
             size="md"
             fullWidth
           >
-            ✦ 查看完整牌阵 · 从 ¥1.9 起
+            ✦ 用「{result.question.length > 8 ? result.question.slice(0, 8) + '…' : result.question}」生成完整解读
           </Button>
         </div>
 
