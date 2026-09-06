@@ -119,6 +119,8 @@ CREATE TABLE IF NOT EXISTS readings (
     spread_type VARCHAR(32),
     interpretation TEXT NOT NULL,
     interpretation_length INT,                  -- 字数统计
+    sections_json TEXT,                         -- AI 返回的结构化 sections（JSON 数组）
+    summary TEXT,                               -- 一句话金句摘要
     question_count INT DEFAULT 0,               -- 追问次数
     is_resolved INT DEFAULT 0,                  -- 用户标记已解决
     created_at BIGINT DEFAULT (strftime('%s','now')*1000)
