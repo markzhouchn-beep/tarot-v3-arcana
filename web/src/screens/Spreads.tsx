@@ -93,7 +93,7 @@ export default function Spreads() {
 
     setOg('og:title', document.title);
     setOg('og:description',
-      `${cur}：${kw}。完整 13 种牌阵：单张 / 三张 / 五张 / 七脉轮 / 凯尔特十字。AI 塔罗牌解读 ¥1.9 起。`);
+      `${cur}：${kw}。完整 13 种牌阵：单张 / 三张 / 五张 / 七脉轮 / 凯尔特十字。AI 塔罗牌解读 ¥1 起。`);
 
     setLink('canonical', `${window.location.origin}/spreads${theme === 'all' ? '' : `?theme=${theme}`}`);
   }, [theme]);

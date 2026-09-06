@@ -13,24 +13,24 @@ const router = Router();
  */
 const SPREADS = {
   // 感情主题
-  'love-single': { name: '每日感情指引', theme: 'love', cards: 1, tier_required: 'registered', price: 1.9, original_price: 5, free_first: true },
-  'love-3': { name: '过去 · 现在 · 未来', theme: 'love', cards: 3, tier_required: 'registered', price: 3.9, original_price: 10 },
+  'love-single': { name: '每日感情指引', theme: 'love', cards: 1, tier_required: 'registered', price: 1, original_price: 5, free_first: true },
+  'love-3': { name: '过去 · 现在 · 未来', theme: 'love', cards: 3, tier_required: 'registered', price: 1.9, original_price: 10 },
   'love-cross-5': { name: '恋人十字', theme: 'love', cards: 5, tier_required: 'silver', positions: ['你眼中的关系', '对方眼中的关系', '潜在发展', '你内心的渴望', '塔罗的建议'] },
   'love-crush-5': { name: '暗恋透视', theme: 'love', cards: 5, tier_required: 'silver', positions: ['你的能量状态', '对方的能量状态', '连接质量', '潜在发展', '最佳行动策略'] },
   'love-chakra-7': { name: '七脉轮感情阵', theme: 'love', cards: 7, tier_required: 'gold', positions: ['海底轮', '脐轮', '太阳神经丛', '心轮', '喉轮', '眉心轮', '顶轮'] },
 
   // 事业主题
-  'career-single': { name: '每日事业指引', theme: 'career', cards: 1, tier_required: 'registered', price: 1.9, original_price: 5 },
-  'career-3': { name: '抉择十字', theme: 'career', cards: 3, tier_required: 'registered', price: 3.9 },
+  'career-single': { name: '每日事业指引', theme: 'career', cards: 1, tier_required: 'registered', price: 1, original_price: 5 },
+  'career-3': { name: '抉择十字', theme: 'career', cards: 3, tier_required: 'registered', price: 1.9 },
   'career-cross-5': { name: '职业十字', theme: 'career', cards: 5, tier_required: 'silver' },
 
   // 财运主题
-  'money-single': { name: '财富流向', theme: 'money', cards: 1, tier_required: 'registered', price: 1.9 },
-  'money-3': { name: '财富三张', theme: 'money', cards: 3, tier_required: 'registered', price: 3.9 },
+  'money-single': { name: '财富流向', theme: 'money', cards: 1, tier_required: 'registered', price: 1 },
+  'money-3': { name: '财富三张', theme: 'money', cards: 3, tier_required: 'registered', price: 1.9 },
 
   // 自我成长
-  'self-single': { name: '内在映照', theme: 'self', cards: 1, tier_required: 'registered', price: 1.9 },
-  'self-3': { name: '内在对话', theme: 'self', cards: 3, tier_required: 'registered', price: 3.9 },
+  'self-single': { name: '内在映照', theme: 'self', cards: 1, tier_required: 'registered', price: 1 },
+  'self-3': { name: '内在对话', theme: 'self', cards: 3, tier_required: 'registered', price: 1.9 },
 
   // 通用高级
   'celtic-10': { name: '凯尔特十字', theme: 'self', cards: 10, tier_required: 'gold', positions: ['现状', '挑战', '根基', '近期过去', '理想结果', '近期未来', '自我认知', '环境影响', '希望与恐惧', '最终结果'] },
