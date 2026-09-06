@@ -1,9 +1,9 @@
 // ============================================================
-// screens/Auth.tsx · 邮箱密码登录 / 注册（v3.0.1：禁魔法链接）
-// Phase 1 · 第 4 页
+// screens/Auth.tsx · 登录/注册（v3.0.2：默认验证码）
+// 2026-09-06 重构：默认用 6 位邮箱验证码，密码降为可选 Tab
 // ============================================================
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -11,6 +11,7 @@ import { Button } from '../components/Button';
 import { authApi, invitesApi } from '../lib/api';
 
 type Action = 'login' | 'register';
+type Mode = 'code' | 'password';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -19,13 +20,33 @@ export default function Auth() {
   const inviteCodeFromUrl = params.get('invite') || '';
   const [inviterInfo, setInviterInfo] = useState<{ nickname: string; tier: string } | null>(null);
 
+  // 默认 验证码 模式（无密码，最快）
+  const [mode, setMode] = useState<Mode>('code');
   const [action, setAction] = useState<Action>('login');
 
+  // 共享：邮箱
   const [email, setEmail] = useState('');
+
+  // 密码模式字段
   const [password, setPassword] = useState('');
+
+  // 验证码模式字段
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [codeStep, setCodeStep] = useState<'email' | 'code'>('email');
+  const [resendIn, setResendIn] = useState(0);
+
+  // 共享
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // 验证码倒计时
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn(resendIn - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
   // Phase 4: 解析 URL ?invite=ABC 参数 → 查邀请人信息
   useEffect(() => {
@@ -71,7 +92,95 @@ export default function Auth() {
     }
   };
 
-  const handleSubmit = () => handlePassword();
+  const sendCode = async () => {
+    if (!email.includes('@')) {
+      setMessage({ type: 'error', text: '请输入有效邮箱' });
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res: any = await authApi.sendCode(email, 'login');
+      setMessage({
+        type: 'success',
+        text: res.dev_code
+          ? `验证码已发送（开发模式：${res.dev_code}）`
+          : `验证码已发送至 ${email}，${res.ttl_min || 10} 分钟内有效`,
+      });
+      setCodeStep('code');
+      setResendIn(60);
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyCode = async () => {
+    const codeStr = code.join('');
+    if (codeStr.length !== 6) {
+      setMessage({ type: 'error', text: '请输入完整 6 位验证码' });
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res: any = await authApi.verifyCode(email, codeStr);
+      if (res.already_logged_in) {
+        setMessage({ type: 'success', text: res.message || '登录成功' });
+        setTimeout(() => navigate(callbackUrl), 500);
+        return;
+      }
+      // 新用户 / 无密码 → 跳 set-password
+      navigate(`/auth/set-password?token=${encodeURIComponent(res.temp_token)}&callback=${encodeURIComponent(callbackUrl)}`);
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCodeChange = (idx: number, v: string) => {
+    const digit = v.replace(/\D/g, '').slice(0, 1);
+    const next = [...code];
+    next[idx] = digit;
+    setCode(next);
+    if (digit && idx < 5) inputRefs.current[idx + 1]?.focus();
+  };
+
+  const handleCodeKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !code[idx] && idx > 0) {
+      inputRefs.current[idx - 1]?.focus();
+    }
+  };
+
+  const handleCodePaste = (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (text.length === 6) {
+      setCode(text.split(''));
+      inputRefs.current[5]?.focus();
+    }
+    e.preventDefault();
+  };
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setMessage(null);
+    if (m === 'code') {
+      setCodeStep('email');
+      setCode(['', '', '', '', '', '']);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (mode === 'code') {
+      if (codeStep === 'email') sendCode();
+      else verifyCode();
+    } else {
+      handlePassword();
+    }
+  };
 
   return (
     <Layout size="sm">
@@ -98,58 +207,139 @@ export default function Auth() {
         </p>
       </div>
 
-      {/* 邮箱 */}
-      <div className="mb-md">
-        <label className="caps block mb-xs text-fg-faint">邮箱</label>
-        <input
-          type="email"
-          className="input"
-          placeholder="your@email.com"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          autoComplete="email"
-        />
-      </div>
-
-      {/* 密码 */}
-      <div className="mb-md">
-        <label className="caps block mb-xs text-fg-faint">密码</label>
-        <input
-          type="password"
-          className="input"
-          placeholder={action === 'register' ? '至少 8 位，含数字和字母' : '你的密码'}
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          autoComplete={action === 'register' ? 'new-password' : 'current-password'}
-        />
-      </div>
-
-      {/* 登录 / 注册 切换 */}
-      <div className="flex justify-end mb-md">
+      {/* 模式 Tab：验证码 / 密码（默认验证码） */}
+      <div className="flex gap-1 mb-lg bg-bg-occult rounded p-1">
         <button
-          onClick={() => setAction(action === 'login' ? 'register' : 'login')}
-          className="text-xs text-fg-secondary hover:text-primary"
+          onClick={() => switchMode('code')}
+          className={`flex-1 py-2 text-sm rounded transition ${
+            mode === 'code'
+              ? 'bg-primary text-bg-canvas font-medium'
+              : 'text-fg-secondary hover:text-fg'
+          }`}
         >
-          {action === 'login' ? '还没有账户？注册' : '已有账户？登录'}
+          ✦ 验证码登录
+        </button>
+        <button
+          onClick={() => switchMode('password')}
+          className={`flex-1 py-2 text-sm rounded transition ${
+            mode === 'password'
+              ? 'bg-primary text-bg-canvas font-medium'
+              : 'text-fg-secondary hover:text-fg'
+          }`}
+        >
+          密码登录
         </button>
       </div>
 
-      {/* v3.0.1 C 方案：验证码登录 + 忘记密码入口 */}
-      <button
-        onClick={() => navigate('/auth/code')}
-        className="text-xs text-primary hover:text-primary-light mt-xs block mx-auto mb-sm"
-      >
-        ✦ 用验证码登录
-      </button>
+      {/* 验证码模式 */}
+      {mode === 'code' && (
+        <>
+          {codeStep === 'email' ? (
+            <div className="mb-md">
+              <label className="caps block mb-xs text-fg-faint">邮箱</label>
+              <input
+                type="email"
+                className="input"
+                placeholder="your@email.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && sendCode()}
+                autoComplete="email"
+                autoFocus
+              />
+              <p className="caps text-2xs text-fg-faint mt-xs">
+                无需密码 · 输入邮箱即可收到 6 位验证码
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-xs">
+                <label className="caps text-fg-faint">验证码</label>
+                <button
+                  onClick={() => { setCodeStep('email'); setCode(['', '', '', '', '', '']); }}
+                  className="text-xxs text-fg-secondary hover:text-primary"
+                >
+                  ← 改邮箱
+                </button>
+              </div>
+              <p className="text-xxs text-fg-faint mb-md font-mono">{email}</p>
+              <div className="flex gap-1.5 justify-between mb-md" onPaste={handleCodePaste}>
+                {code.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={el => { inputRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={e => handleCodeChange(i, e.target.value)}
+                    onKeyDown={e => handleCodeKeyDown(i, e)}
+                    className="input text-center text-2xl font-bold w-full"
+                  />
+                ))}
+              </div>
+              <div className="text-center">
+                {resendIn > 0 ? (
+                  <span className="text-xxs text-fg-faint">{resendIn}s 后重新发送</span>
+                ) : (
+                  <button onClick={sendCode} className="text-xxs text-primary hover:text-primary-light">
+                    重新发送验证码
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
-      <div className="flex justify-end mb-md">
-        <button
-          onClick={() => navigate('/auth/forgot')}
-          className="text-xs text-fg-faint hover:text-primary"
-        >
-          忘了密码？
-        </button>
-      </div>
+      {/* 密码模式 */}
+      {mode === 'password' && (
+        <>
+          <div className="mb-md">
+            <label className="caps block mb-xs text-fg-faint">邮箱</label>
+            <input
+              type="email"
+              className="input"
+              placeholder="your@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="mb-md">
+            <label className="caps block mb-xs text-fg-faint">密码</label>
+            <input
+              type="password"
+              className="input"
+              placeholder={action === 'register' ? '至少 8 位，含数字和字母' : '你的密码'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handlePassword()}
+              autoComplete={action === 'register' ? 'new-password' : 'current-password'}
+            />
+          </div>
+
+          {/* 登录 / 注册 切换 */}
+          <div className="flex justify-end mb-md">
+            <button
+              onClick={() => setAction(action === 'login' ? 'register' : 'login')}
+              className="text-xs text-fg-secondary hover:text-primary"
+            >
+              {action === 'login' ? '还没有账户？注册' : '已有账户？登录'}
+            </button>
+          </div>
+
+          <div className="flex justify-end mb-md">
+            <button
+              onClick={() => navigate('/auth/forgot')}
+              className="text-xs text-fg-faint hover:text-primary"
+            >
+              忘了密码？
+            </button>
+          </div>
+        </>
+      )}
 
       {/* 消息 */}
       {message && (
@@ -166,15 +356,17 @@ export default function Auth() {
 
       {/* 主按钮 */}
       <Button onClick={handleSubmit} loading={loading} fullWidth size="lg">
-        {action === 'login' ? '登录' : '注册'}
+        {mode === 'code'
+          ? (codeStep === 'email' ? '发送验证码' : '验证并登录')
+          : (action === 'login' ? '登录' : '注册')}
       </Button>
 
       {/* 提示 */}
       <div className="mt-xl text-center">
         <p className="text-xs text-fg-faint leading-relaxed">
-          密码至少 8 位，须含数字和字母
-          {'\n'}
-          连续 5 次错误将锁定账户 15 分钟
+          {mode === 'code'
+            ? '验证码 10 分钟内有效 · 不需要记密码'
+            : '密码至少 8 位，须含数字和字母 · 连续 5 次错误将锁定 15 分钟'}
         </p>
       </div>
 

@@ -120,7 +120,7 @@ export default function YesNo() {
         </div>
       )}
 
-      {/* 用完提示横幅：引导升级 */}
+      {/* 用完提示横幅：引导升级 + 单次付费备选 */}
       {quota && quota.remaining <= 0 && (
         <div className="panel p-md border-primary/40 bg-bg-occult text-center mb-lg">
           <div className="caps text-primary mb-xs">— 今日次数已用完 —</div>
@@ -131,19 +131,49 @@ export default function YesNo() {
             {(!user || user?.tier === 'gold') && '请明天再来'}
           </p>
           {(user?.tier === 'guest' || !user) && (
-            <Button onClick={() => navigate('/auth')} variant="primary" size="sm" fullWidth>
-              ✦ 注册登录解锁更多
-            </Button>
+            <>
+              <Button onClick={() => navigate('/auth')} variant="primary" size="sm" fullWidth>
+                ✦ 注册登录解锁更多
+              </Button>
+              <div className="mt-sm">
+                <button
+                  onClick={() => navigate('/spreads')}
+                  className="text-xxs text-fg-secondary hover:text-primary"
+                >
+                  或花 ¥1 立即再来 1 次完整解读 →
+                </button>
+              </div>
+            </>
           )}
           {user?.tier === 'registered' && (
-            <Button onClick={() => navigate('/membership')} variant="primary" size="sm" fullWidth>
-              ✦ 开通银月会员
-            </Button>
+            <>
+              <Button onClick={() => navigate('/membership')} variant="primary" size="sm" fullWidth>
+                ✦ 开通银月会员
+              </Button>
+              <div className="mt-sm">
+                <button
+                  onClick={() => navigate('/spreads')}
+                  className="text-xxs text-fg-secondary hover:text-primary"
+                >
+                  或花 ¥1 立即再来 1 次完整解读 →
+                </button>
+              </div>
+            </>
           )}
           {user?.tier === 'silver' && (
-            <Button onClick={() => navigate('/membership')} variant="primary" size="sm" fullWidth>
-              ✦ 升级金月会员
-            </Button>
+            <>
+              <Button onClick={() => navigate('/membership')} variant="primary" size="sm" fullWidth>
+                ✦ 升级金月会员
+              </Button>
+              <div className="mt-sm">
+                <button
+                  onClick={() => navigate('/spreads')}
+                  className="text-xxs text-fg-secondary hover:text-primary"
+                >
+                  或花 ¥1.9 来 1 次三张牌阵完整解读 →
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

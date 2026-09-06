@@ -111,9 +111,7 @@ export default function Membership() {
             tier={tier}
             current={currentTier === tier.id}
             onSubscribe={async (plan) => {
-              // Phase 2：调 /api/membership/subscribe → 拿爱发电 URL → window.open 跳转
               try {
-                // 先查是否登录（未登录跳转 /auth）
                 const me = await authApi.me();
                 if (!me?.user?.id) {
                   navigate('/auth');
@@ -122,15 +120,12 @@ export default function Membership() {
                 const planKey = `${tier.id}_${plan === 'monthly' ? 'monthly' : 'yearly'}`;
                 const res = await membershipApi.subscribe(planKey);
                 if (res?.afdianPayUrl) {
-                  // 必须同步 window.open 避免拦截
-                  const win = window.open('about:blank', '_blank');
-                  if (win) win.location.href = res.afdianPayUrl;
-                  else window.location.href = res.afdianPayUrl;
+                  // 同步跳转爱发电支付
+                  setTimeout(() => { window.location.href = res.afdianPayUrl; }, 300);
                 } else {
                   alert('订阅创建失败：未返回支付链接');
                 }
               } catch (err) {
-                // 401 / 未登录一律跳 /auth，不弹错误框
                 const msg = err instanceof Error ? err.message : String(err);
                 if (
                   msg.includes('401') ||
@@ -150,8 +145,76 @@ export default function Membership() {
         ))}
       </div>
 
-      <div className="caps text-2xs text-fg-faint text-center mt-xl">
-        会员通过爱发电订阅 · 自动激活
+      {/* 权益对比表 */}
+      <div className="mt-2xl">
+        <div className="caps text-fg-faint mb-md text-center">— 权益对比 —</div>
+        <div className="panel p-md overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 text-fg-faint font-normal">权益</th>
+                <th className="text-center py-2 text-fg-faint font-normal">访客</th>
+                <th className="text-center py-2 text-fg-faint font-normal">注册</th>
+                <th className="text-center py-2 text-primary">银月</th>
+                <th className="text-center py-2 text-primary">金月</th>
+              </tr>
+            </thead>
+            <tbody className="text-fg-secondary">
+              <tr className="border-b border-border-soft">
+                <td className="py-2">每日 Yes/No</td>
+                <td className="text-center text-fg-faint">1</td>
+                <td className="text-center text-fg-faint">3</td>
+                <td className="text-center text-fg">10</td>
+                <td className="text-center text-primary font-medium">无限</td>
+              </tr>
+              <tr className="border-b border-border-soft">
+                <td className="py-2">单张 / 三张牌阵</td>
+                <td className="text-center text-primary">✓</td>
+                <td className="text-center text-primary">✓</td>
+                <td className="text-center text-primary">✓</td>
+                <td className="text-center text-primary">✓</td>
+              </tr>
+              <tr className="border-b border-border-soft">
+                <td className="py-2">5 张 / 7 张牌阵</td>
+                <td className="text-center text-fg-faint">—</td>
+                <td className="text-center text-fg-faint">—</td>
+                <td className="text-center text-primary">5 张</td>
+                <td className="text-center text-primary">全部</td>
+              </tr>
+              <tr className="border-b border-border-soft">
+                <td className="py-2">凯尔特十字（10 张）</td>
+                <td className="text-center text-fg-faint">—</td>
+                <td className="text-center text-fg-faint">—</td>
+                <td className="text-center text-fg-faint">—</td>
+                <td className="text-center text-primary">✓</td>
+              </tr>
+              <tr className="border-b border-border-soft">
+                <td className="py-2">Oracle 追问</td>
+                <td className="text-center text-fg-faint">—</td>
+                <td className="text-center text-fg-faint">2/月</td>
+                <td className="text-center text-fg">5/月</td>
+                <td className="text-center text-primary font-medium">无限</td>
+              </tr>
+              <tr>
+                <td className="py-2">解读历史保存</td>
+                <td className="text-center text-fg-faint">7天</td>
+                <td className="text-center text-fg">永久</td>
+                <td className="text-center text-fg">永久</td>
+                <td className="text-center text-primary">永久</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 信任 + 单次备选 */}
+      <div className="mt-xl text-center space-y-sm">
+        <p className="text-xxs text-fg-faint">
+          🛡️ 由爱发电 afdian.net 担保支付 · 微信 / 支付宝均可
+        </p>
+        <p className="text-xxs text-fg-faint">
+          不想开会员？<button onClick={() => navigate('/spreads')} className="text-primary hover:text-primary-light underline">单次解读 ¥1 起 →</button>
+        </p>
       </div>
     </Layout>
   );

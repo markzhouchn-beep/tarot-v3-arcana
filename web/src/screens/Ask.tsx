@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
@@ -37,6 +37,7 @@ function getDeviceId(): string {
 export default function Ask() {
   const navigate = useNavigate();
   const { spread: spreadId } = useParams<{ spread: string }>();
+  const [searchParams] = useSearchParams();
 
   const [spread, setSpread] = useState<Spread | null>(null);
   const [question, setQuestion] = useState('');
@@ -45,6 +46,10 @@ export default function Ask() {
   const [error, setError] = useState<string | null>(null);
   const [tier, setTier] = useState<string>('guest');
   const [user, setUser] = useState<any>(null);
+
+  // 从 YesNo 跳转过来：预填问题 + 显示「推荐 3 张」提示
+  const prefilledQuestion = searchParams.get('question') || '';
+  const fromYesNo = searchParams.get('from') === 'yesno';
 
   useEffect(() => {
     Promise.all([
@@ -62,6 +67,11 @@ export default function Ask() {
       .then(s => { setSpread(s); setLoading(false); })
       .catch(err => { setError(err.message); setLoading(false); });
   }, [spreadId]);
+
+  // 预填问题
+  useEffect(() => {
+    if (prefilledQuestion) setQuestion(prefilledQuestion);
+  }, [prefilledQuestion]);
 
   const handleSubmit = async () => {
     if (!spread) return;
@@ -87,11 +97,9 @@ export default function Ask() {
         device_id: getDeviceId(),
       });
       // 会员：afdianPayUrl=null，直接跳 draw
-      // 非会员：同步 window.open 跳转爱发电付乾
+      // 非会员：同步跳转爱发电支付（不 hack）
       if (result.afdianPayUrl) {
-        const win = window.open('about:blank', '_blank');
-        if (win) win.location.href = result.afdianPayUrl;
-        else window.location.href = result.afdianPayUrl;
+        setTimeout(() => { window.location.href = result.afdianPayUrl; }, 300);
       }
       // 跳到抽牌动画
       navigate(`/draw/${result.orderId}`);
@@ -132,6 +140,16 @@ export default function Ask() {
   return (
     <Layout size="sm">
       <ScreenHeader back="/spreads" title="提问" />
+
+      {/* YesNo 跳转过来的引导横幅 */}
+      {fromYesNo && (
+        <div className="panel p-md bg-primary/10 border-primary/40 mb-md">
+          <div className="caps text-primary mb-xs">— 根据你的问题推荐 —</div>
+          <p className="text-sm text-fg-secondary leading-relaxed">
+            3 张牌阵「<span className="text-fg">过去 · 现在 · 未来</span>」是分析"是 / 否"问题最常用的牌阵。AI 会用它生成完整解读。
+          </p>
+        </div>
+      )}
 
       {/* 牌阵信息卡 */}
       <div className="panel p-lg mb-xl text-center">

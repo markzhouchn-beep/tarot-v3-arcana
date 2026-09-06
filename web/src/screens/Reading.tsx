@@ -43,6 +43,27 @@ export default function Reading() {
   const [error, setError] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // 复制链接
+  const handleCopyLink = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // 降级方案
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // 下载分享卡片
   const handleShare = async (template: 'quote' | 'question' | 'mood') => {
@@ -297,19 +318,36 @@ export default function Reading() {
                 {shareError}
               </div>
             )}
+
+            {/* 复制链接 */}
+            <button
+              onClick={handleCopyLink}
+              className="w-full text-center text-xxs text-fg-secondary hover:text-primary mt-sm"
+            >
+              {copied ? '✅ 已复制链接' : '🔗 复制解读链接'}
+            </button>
+          </div>
+
+          {/* 追问引导（高优先级） */}
+          <div className="panel p-lg bg-bg-occult border-primary/30 mt-lg">
+            <div className="caps text-primary mb-xs">— 牌面还没说够 —</div>
+            <p className="text-sm text-fg-secondary font-body mb-md leading-relaxed">
+              解读是"现在"，追问 Oracle 还能问 <span className="text-fg">「他 / 这件事 / 接下来怎么办」</span>。5 轮对话，让塔罗师继续推演。
+            </p>
+            <Button onClick={() => navigate(`/oracle/${id}`)} variant="primary" size="md" fullWidth>
+              🌙 追问 Oracle · 5 轮对话
+            </Button>
+            <p className="caps text-2xs text-fg-faint text-center mt-xs">
+              会员可无限追问 · 访客 2 次 / 月
+            </p>
           </div>
 
           {/* 行动按钮 */}
-          <div className="grid grid-cols-2 gap-md mt-lg">
+          <div className="grid grid-cols-2 gap-md mt-md">
             <Button onClick={() => navigate('/spreads')} variant="secondary" size="md">
               ✦ 新的占卜
             </Button>
-            <Button onClick={() => navigate(`/oracle/${id}`)} variant="primary" size="md">
-              🌙 追问 Oracle
-            </Button>
-          </div>
-          <div className="mt-sm">
-            <Button onClick={() => navigate('/dashboard')} variant="ghost" size="sm" fullWidth>
+            <Button onClick={() => navigate('/dashboard')} variant="ghost" size="md">
               📜 我的解读
             </Button>
           </div>
