@@ -121,7 +121,7 @@ export default function Hero() {
           ✦ Arcana Box
         </h1>
         <h2 className="text-xl font-display text-fg-secondary tracking-wide mb-xs">
-          星 语 塔 罗
+          塔 罗 匣
         </h2>
         <p className="text-sm font-body text-fg-faint italic">
           答案就在牌面

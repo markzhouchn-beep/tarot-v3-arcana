@@ -48,7 +48,7 @@ export default function Community() {
       <ScreenHeader back="/" title="社区" />
 
       <div className="panel p-lg mb-lg bg-bg-occult text-center">
-        <div className="caps text-2xs text-primary mb-xs">— 星语社区 —</div>
+        <div className="caps text-2xs text-primary mb-xs">— 塔罗匣社区 —</div>
         <p className="text-sm text-fg font-body italic">
           来自陌生人的追问与塔罗回答 · 已脱敏匿名
         </p>
