@@ -1,10 +1,12 @@
 // ============================================================
-// components/Layout.tsx · 通用布局（540px 居中 + 装饰边距）
+// components/Layout.tsx · 通用布局（540px 居中 + 装饰边距 + 底部 Tab）
 // 创建：2026-09-01 · Phase 1
+// 2026-09-06 v3.0.3：底部 Tab Bar（BottomNav）
 // ============================================================
 
 import type { ReactNode } from 'react';
 import { UserMenu } from './UserMenu';
+import { BottomNav } from './BottomNav';
 
 interface Props {
   children: ReactNode;
@@ -31,11 +33,14 @@ export function Layout({ children, orbs = false, size = 'md' }: Props) {
       </div>
 
       <main
-        className="relative z-10 mx-auto px-md py-xl w-full pt-2xl"
+        className="relative z-10 mx-auto px-md py-xl w-full pt-2xl pb-24"
         style={{ maxWidth: SIZE_MAX[size] }}
       >
         {children}
       </main>
+
+      {/* v3.0.3 底部 Tab Bar */}
+      <BottomNav />
     </div>
   );
 }

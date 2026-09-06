@@ -4,7 +4,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
@@ -47,10 +47,11 @@ function getDeviceId(): string {
 
 export default function YesNo() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [deviceId] = useState(getDeviceId());
   const [quota, setQuota] = useState<Quota | null>(null);
   const [user, setUser] = useState<{ tier?: string } | null>(null);
-  const [question, setQuestion] = useState('');
+  const [question, setQuestion] = useState(() => searchParams.get('question') || '');
   const [result, setResult] = useState<DrawResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +61,12 @@ export default function YesNo() {
     // 获取用户 tier（仅用于决定是否提示注册）
     authApi.me().then((d: any) => setUser(d?.user || null)).catch(() => setUser(null));
   }, []);
+
+  // 同步 URL 中的 question 参数（用户从首页示例跳转时）
+  useEffect(() => {
+    const q = searchParams.get('question');
+    if (q) setQuestion(q);
+  }, [searchParams]);
 
   const refreshQuota = () => {
     yesNoApi.quota(deviceId)

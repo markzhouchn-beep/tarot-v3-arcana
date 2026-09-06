@@ -1,12 +1,89 @@
 // ============================================================
 // screens/Hero.tsx · 首页（品牌 + Yes/No 入口 + 主题牌阵 + 会员入口）
 // Phase 1 · 第 1 页
+// 2026-09-06 v3.0.3：新增「大家都在问什么」示例问题模块（替代用户评价）
 // ============================================================
 
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useEffect, useState } from 'react';
 import { authApi } from '../lib/api';
+
+interface SampleQuestion {
+  id: string;
+  question: string;
+  card: string;          // 牌名
+  cardSymbol: string;    // 牌符号
+  snippet: string;       // AI 解读片段
+  action: string;        // 行动建议
+}
+
+const SAMPLE_QUESTIONS: SampleQuestion[] = [
+  {
+    id: 'love-1',
+    question: '他对我到底有没有意思？',
+    card: '恋人 · 正位',
+    cardSymbol: '💕',
+    snippet: '月亮正位显示你们之间确实有连接。但现在的隐士逆位代表他在犹豫 —— 不是不喜欢，是怕承认。',
+    action: '下一步：见面时主动提起一个私密话题，看他会不会跟进。',
+  },
+  {
+    id: 'love-2',
+    question: '我们还能复合吗？',
+    card: '命运之轮',
+    cardSymbol: '🎡',
+    snippet: '过去是逆位塔（你们分得不愉快），现在是世界正位（你已经在愈合）。未来力量正位代表需要主动。',
+    action: '下一步：先给自己 3 周，再发一条不带情绪的问候。',
+  },
+  {
+    id: 'career-1',
+    question: '这次升职能通过吗？',
+    card: '皇帝 · 正位',
+    cardSymbol: '👑',
+    snippet: '现状是世界正位（你能力够），挑战是逆位审判（过去的项目在审查你）。但核心牌权杖 3 显示有贵人。',
+    action: '下一步：准备一份过去 6 个月的成果清单，主动找上级 1on1。',
+  },
+  {
+    id: 'career-2',
+    question: '现在换工作合适吗？',
+    card: '高塔',
+    cardSymbol: '🗼',
+    snippet: '现在是逆位高塔（当前公司正在动荡），未来是星星正位（前方有光）。但需要准备，不是现在走。',
+    action: '下一步：再等 2 个月，期间每周投 2 份简历，3 个月内拿 offer 再动。',
+  },
+  {
+    id: 'money-1',
+    question: '今年下半年财运怎么样？',
+    card: '皇后 · 正位',
+    cardSymbol: '🌾',
+    snippet: '上半年权杖 4 稳中有升。下半年女皇正位带来副业机遇 —— 尤其跟"美、创作、关怀"相关的方向。',
+    action: '下一步：6 月开始试一个小副业（哪怕只赚 100/月），积累下半年能量。',
+  },
+  {
+    id: 'love-3',
+    question: '这次相亲能成吗？',
+    card: '太阳 · 正位',
+    cardSymbol: '☀️',
+    snippet: '相遇牌太阳正位强烈预示良好开端。但隐士逆位提示 —— 别用力过猛，自然一点。',
+    action: '下一步：前 3 次见面只聊 30 分钟内，让对方有"还想再聊"的欲望。',
+  },
+  {
+    id: 'self-1',
+    question: '我该不该和 TA 复合？',
+    card: '死神 · 正位',
+    cardSymbol: '🦋',
+    snippet: '死神正位不是终结，是"重生"。不是 TA 的问题 —— 是你带着旧模式回去。',
+    action: '下一步：先分开 3 个月。写下"上次分手的真实原因"，等 3 个月再决定。',
+  },
+  {
+    id: 'self-2',
+    question: '我该怎么改变现状？',
+    card: '魔术师',
+    cardSymbol: '🪄',
+    snippet: '魔术师手举 4 元素 —— 你已经有所有"工具"。只是还没"整合"。',
+    action: '下一步：列一张"过去 3 年你做对的事"，识别你最擅长的能力并强化它。',
+  },
+];
 
 export default function Hero() {
   const navigate = useNavigate();
@@ -70,6 +147,41 @@ export default function Hero() {
             <div className="text-3xl opacity-40 group-hover:opacity-100">→</div>
           </div>
         </button>
+      </section>
+
+      {/* 大家都在问什么 · 真实示例问题（脱敏） */}
+      <section className="mb-3xl">
+        <div className="caps text-fg-faint text-center mb-md">— 大家都在问什么 —</div>
+        <div className="space-y-md">
+          {SAMPLE_QUESTIONS.map((q) => (
+            <button
+              key={q.id}
+              onClick={() => navigate(`/yes-no?question=${encodeURIComponent(q.question)}`)}
+              className="w-full panel p-md text-left transition-all duration-fast hover:border-primary hover:shadow-glow-gold group"
+            >
+              <div className="flex items-start gap-md">
+                <div className="text-2xl shrink-0">{q.cardSymbol}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-md text-primary mb-1">
+                    {q.question}
+                  </div>
+                  <div className="text-xs text-fg-faint font-body line-clamp-2 leading-relaxed">
+                    {q.snippet}
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="caps text-2xs text-fg-faint">{q.card}</span>
+                    <span className="text-xxs text-primary opacity-0 group-hover:opacity-100 transition">
+                      我也想问问 →
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+        <p className="caps text-2xs text-fg-faint text-center mt-md">
+          脱敏真实场景 · 点击任意问题立即开始
+        </p>
       </section>
 
       {/* 主题牌阵入口 · 4 主题 */}
