@@ -2,9 +2,11 @@
 // components/Layout.tsx · 通用布局（540px 居中 + 装饰边距 + 底部 Tab）
 // 创建：2026-09-01 · Phase 1
 // 2026-09-06 v3.0.3：底部 Tab Bar（BottomNav）
+// 2026-09-06 v3.0.3.1：/auth 页面不加底部 padding（避免留白）
 // ============================================================
 
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { BottomNav } from './BottomNav';
 
@@ -23,6 +25,10 @@ const SIZE_MAX = {
 };
 
 export function Layout({ children, orbs = false, size = 'md' }: Props) {
+  const location = useLocation();
+  // /auth 页面 BottomNav 不显示，无需底部留白
+  const isAuthPage = location.pathname.startsWith('/auth');
+
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden">
       {orbs && <OrbBackground />}
@@ -33,13 +39,13 @@ export function Layout({ children, orbs = false, size = 'md' }: Props) {
       </div>
 
       <main
-        className="relative z-10 mx-auto px-md py-xl w-full pt-2xl pb-24"
+        className={`relative z-10 mx-auto px-md py-xl w-full pt-2xl ${isAuthPage ? '' : 'pb-24'}`}
         style={{ maxWidth: SIZE_MAX[size] }}
       >
         {children}
       </main>
 
-      {/* v3.0.3 底部 Tab Bar */}
+      {/* v3.0.3 底部 Tab Bar（auth/admin 页自动隐藏） */}
       <BottomNav />
     </div>
   );

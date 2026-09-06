@@ -67,7 +67,7 @@ export function BottomNav() {
               <button
                 key={tab.key}
                 onClick={() => handleTab(tab)}
-                className="relative -top-5 w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-95"
+                className="relative -top-5 w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/60"
                 style={{
                   background: 'linear-gradient(135deg, #c8985b 0%, #a83a3a 100%)',
                   boxShadow: '0 0 24px rgba(200, 152, 91, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4)',
@@ -83,14 +83,14 @@ export function BottomNav() {
             <button
               key={tab.key}
               onClick={() => handleTab(tab)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 transition ${
+              className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 transition focus:outline-none focus:text-primary ${
                 isActive ? 'text-primary' : 'text-fg-faint hover:text-fg-secondary'
               }`}
               aria-label={tab.label}
             >
               <span className={`text-xl ${isActive ? 'scale-110' : ''} transition-transform`}>{tab.icon}</span>
               <span className="text-xxs">{tab.label}</span>
-              {isActive && <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />}
+              {isActive && <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-primary" />}
             </button>
           );
         })}
