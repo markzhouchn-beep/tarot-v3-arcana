@@ -1,7 +1,6 @@
 // ============================================================
-// lib/share-card.ts · 海报生成（纯 Canvas API，无 html2canvas）
-// v3.0.2：3 模板统一显示：站点 + 牌阵 + 牌图(名称+正逆) + 问题 + 金句 + 氛围
-// 创建：2026-09-02 · 重写 2026-09-03 17:30
+// lib/share-card.ts · 海报生成（纯 Canvas API）
+// v3.0.3：修复 3 个模板压字/牌图不显示/无效圆环问题
 // ============================================================
 
 export interface ShareCardCard {
@@ -9,36 +8,25 @@ export interface ShareCardCard {
   name: string;
   orientation: 'upright' | 'reversed';
   position?: string;
-  imageUrl?: string;        // 牌图 URL（可选）
+  imageUrl?: string;
 }
 
 export interface ShareCardData {
-  // 基础
-  siteName: string;          // e.g. "ARCANA 星语塔罗"
-  siteUrl: string;           // e.g. "tarot.layershop.store"
-  spreadName: string;        // e.g. "凯尔特十字"
+  siteName: string;
+  siteUrl: string;
+  spreadName: string;
   theme: 'love' | 'career' | 'money' | 'self';
-
-  // 牌
   cards: ShareCardCard[];
-
-  // 问题
   question: string;
-
-  // 金句 + 短答案（AI 出 / 摘要 fallback）
-  goldenPhrase: string;      // 一句金句型收尾
-  briefAnswer: string;       // 简短答案
-
-  // 氛围（AI 出 / fallback 占位）
+  goldenPhrase: string;
+  briefAnswer: string;
   atmosphere: string;
-
-  // 兼容旧字段
-  cardName?: string;         // 主牌（氛围型用）
-  summary?: string;          // 兼容旧数据
+  cardName?: string;
+  summary?: string;
   sectionTitle?: string;
 }
 
-// 主题色（暗底金调，符合塔罗品牌）
+// 品牌色
 const T = {
   bg: '#0d0b14',
   bgGrad: '#1a1428',
@@ -46,16 +34,11 @@ const T = {
   goldSoft: '#e6c890',
   text: '#f0eadf',
   textFaint: '#a89a82',
-  accent: '#d4af37',
   line: '#3a2f4f',
 };
 
 const W = 1080;
-const H = 1920; // 9:16 竖屏
-
-const THEME_SYMBOL: Record<string, string> = {
-  love: '💞', career: '💼', money: '💰', self: '🌙',
-};
+const H = 1920;
 
 // === 工具函数 ===
 
@@ -78,6 +61,7 @@ function drawBaseBackground(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
+  // 四角装饰边框
   ctx.strokeStyle = T.gold;
   ctx.lineWidth = 4;
   ctx.strokeRect(40, 40, W - 80, H - 80);
@@ -110,22 +94,22 @@ function drawDivider(ctx: CanvasRenderingContext2D, cx: number, cy: number, w = 
   ctx.strokeStyle = T.gold;
   ctx.lineWidth = w;
   ctx.beginPath();
-  ctx.moveTo(cx - 100, cy);
-  ctx.lineTo(cx + 100, cy);
+  ctx.moveTo(cx - 80, cy);
+  ctx.lineTo(cx + 80, cy);
   ctx.stroke();
   ctx.fillStyle = T.gold;
   ctx.beginPath();
-  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
   ctx.fill();
 }
 
-function drawStars(ctx: CanvasRenderingContext2D, count = 30) {
+function drawStars(ctx: CanvasRenderingContext2D, count = 25) {
   ctx.save();
   for (let i = 0; i < count; i++) {
     const x = Math.random() * W;
     const y = Math.random() * H;
     const r = Math.random() * 1.5 + 0.3;
-    ctx.fillStyle = `rgba(201, 169, 110, ${Math.random() * 0.4 + 0.1})`;
+    ctx.fillStyle = `rgba(201, 169, 110, ${Math.random() * 0.35 + 0.1})`;
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
@@ -133,6 +117,10 @@ function drawStars(ctx: CanvasRenderingContext2D, count = 30) {
   ctx.restore();
 }
 
+/**
+ * 自动换行文字渲染
+ * @returns 文字块底部 y 坐标
+ */
 function drawWrappedText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -141,7 +129,7 @@ function drawWrappedText(
   maxWidth: number,
   lineHeight: number,
   align: CanvasTextAlign = 'center'
-) {
+): number {
   ctx.textAlign = align;
   const chars = text.split('');
   const lines: string[] = [];
@@ -162,343 +150,364 @@ function drawWrappedText(
     ctx.fillText(line, cx, y);
     y += lineHeight;
   }
-  return y;
+  return y; // 返回文字块底部 y（不含额外间距）
 }
 
 /**
- * 渲染一组牌（支持 1-10 张，自动布局）
- * @returns 渲染结束 y 坐标
+ * 渲染一组牌（最多 n 张，超出部分截断）
+ * @param maxCards 最多渲染几张牌，默认全部
+ * @returns 牌阵底部 y 坐标
  */
 async function drawCardGrid(
   ctx: CanvasRenderingContext2D,
   cards: ShareCardCard[],
   cx: number,
   startY: number,
-  maxWidth: number
+  maxWidth: number,
+  maxCards?: number
 ): Promise<number> {
-  const n = cards.length;
+  const display = maxCards ? cards.slice(0, maxCards) : cards;
+  const n = display.length;
   if (n === 0) return startY;
 
-  // 牌图大小根据数量自适应
-  const layout =
-    n === 1 ? { cols: 1, cardW: 220, cardH: 340, gap: 0 } :
-    n <= 3 ? { cols: n, cardW: 200, cardH: 310, gap: 30 } :
-    n <= 5 ? { cols: n, cardW: 170, cardH: 270, gap: 16 } :
-    n <= 7 ? { cols: 4, cardW: 150, cardH: 240, gap: 16 } :
-              { cols: 5, cardW: 130, cardH: 200, gap: 16 };
+  // 根据数量确定尺寸和列数
+  let cols: number, cardW: number, cardH: number, gap: number;
+  if (n === 1) {
+    cols = 1; cardW = 240; cardH = 370; gap = 0;
+  } else if (n === 2) {
+    cols = 2; cardW = 210; cardH = 325; gap = 20;
+  } else if (n === 3) {
+    cols = 3; cardW = 200; cardH = 310; gap = 16;
+  } else if (n <= 5) {
+    cols = Math.min(n, 3);
+    cardW = 180; cardH = 280; gap = 12;
+  } else {
+    cols = 4; cardW = 150; cardH = 230; gap = 10;
+  }
 
-  const rows = Math.ceil(n / layout.cols);
-  const rowH = layout.cardH + 60; // 牌 + 牌名 + 正逆
+  const rows = Math.ceil(n / cols);
+  // 每行高度 = 牌高度 + 牌名(20) + 正逆(18) + 间距(14)
+  const rowH = cardH + 52;
+  const labelGap = 14; // 行之间的额外间距
 
   // 预加载所有牌图
-  const imgs = await Promise.all(cards.map(c => c.imageUrl ? loadImage(c.imageUrl) : Promise.resolve(null)));
+  const imgs = await Promise.all(display.map(c => c.imageUrl ? loadImage(c.imageUrl) : Promise.resolve(null)));
 
   for (let i = 0; i < n; i++) {
-    const row = Math.floor(i / layout.cols);
-    const col = i % layout.cols;
-    const inRow = Math.min(n - row * layout.cols, layout.cols);
-    const rowWidth = inRow * layout.cardW + (inRow - 1) * layout.gap;
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    // 计算当前行实际列数（最后一行可能不满）
+    const inRow = Math.min(n - row * cols, cols);
+    const rowWidth = inRow * cardW + (inRow - 1) * gap;
     const x0 = cx - rowWidth / 2;
-    const cardX = x0 + col * (layout.cardW + layout.gap);
-    const cardY = startY + row * rowH;
+    const cardX = x0 + col * (cardW + gap);
+    const cardY = startY + row * (rowH + labelGap);
 
-    const card = cards[i];
+    const card = display[i];
     const img = imgs[i];
 
-    // 卡牌（金边框 + 牌图 / 占位）
-    ctx.save();
-    // 卡图
+    // 牌图
     if (img) {
-      const drawW = layout.cardW;
-      const drawH = layout.cardH;
-      // 卡片方向
+      const drawW = cardW, drawH = cardH;
       if (card.orientation === 'reversed') {
+        ctx.save();
         ctx.translate(cardX + drawW / 2, cardY + drawH / 2);
         ctx.rotate(Math.PI);
         ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+        ctx.restore();
       } else {
         ctx.drawImage(img, cardX, cardY, drawW, drawH);
       }
     } else {
-      // 占位（深色 + 神秘符号）
+      // 占位
       ctx.fillStyle = T.bgGrad;
-      ctx.fillRect(cardX, cardY, layout.cardW, layout.cardH);
+      ctx.fillRect(cardX, cardY, cardW, cardH);
       ctx.strokeStyle = T.gold;
       ctx.lineWidth = 2;
-      ctx.strokeRect(cardX, cardY, layout.cardW, layout.cardH);
+      ctx.strokeRect(cardX, cardY, cardW, cardH);
       ctx.fillStyle = T.goldSoft;
-      ctx.font = '500 32px "Cormorant Garamond", serif';
+      ctx.font = '500 36px serif';
       ctx.textAlign = 'center';
-      ctx.fillText('✦', cardX + layout.cardW / 2, cardY + layout.cardH / 2);
+      ctx.fillText('✦', cardX + cardW / 2, cardY + cardH / 2 + 12);
     }
-    ctx.restore();
 
-    // 卡牌金色边框
+    // 边框
     ctx.strokeStyle = T.gold;
     ctx.lineWidth = 2;
-    ctx.strokeRect(cardX, cardY, layout.cardW, layout.cardH);
+    ctx.strokeRect(cardX, cardY, cardW, cardH);
 
     // 牌名
     ctx.fillStyle = T.text;
-    ctx.font = '500 22px "Noto Serif SC", serif';
+    ctx.font = '500 20px "Noto Serif SC", serif';
     ctx.textAlign = 'center';
-    ctx.fillText(card.name, cardX + layout.cardW / 2, cardY + layout.cardH + 24);
+    ctx.fillText(card.name, cardX + cardW / 2, cardY + cardH + 22);
 
     // 正/逆
     ctx.fillStyle = T.textFaint;
-    ctx.font = '400 16px sans-serif';
-    ctx.fillText(card.orientation === 'reversed' ? '逆位' : '正位', cardX + layout.cardW / 2, cardY + layout.cardH + 48);
+    ctx.font = '400 15px sans-serif';
+    ctx.fillText(card.orientation === 'reversed' ? '逆位' : '正位', cardX + cardW / 2, cardY + cardH + 42);
   }
 
-  return startY + rows * rowH;
+  return startY + rows * (rowH + labelGap) - labelGap;
 }
 
-// === 通用 header / footer ===
+// === 通用 header ===
 
 function drawHeader(ctx: CanvasRenderingContext2D, d: ShareCardData) {
-  // 顶部：站点名 + 主题符号（品牌名放大）
   ctx.fillStyle = T.gold;
-  ctx.font = '700 48px "PingFang SC", "Noto Sans CJK SC", sans-serif';
+  ctx.font = '700 44px "PingFang SC", "Noto Sans CJK SC", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('✦ 塔罗匣 · Arcana Box ✦', W / 2, 140);
+  ctx.fillText('塔罗匣 Arcana Box', W / 2, 120);
 
   ctx.fillStyle = T.textFaint;
-  ctx.font = '400 22px sans-serif';
-  ctx.fillText(d.siteUrl, W / 2, 180);
+  ctx.font = '400 20px sans-serif';
+  ctx.fillText(d.siteUrl, W / 2, 158);
 
-  // 主题符号
-  ctx.font = '600 64px "Cormorant Garamond", serif';
-  ctx.fillStyle = T.goldSoft;
-  const symbol = THEME_SYMBOL[d.theme] || '✦';
-  ctx.fillText(symbol, W / 2, 280);
-
-  // 牌阵名
-  ctx.fillStyle = T.goldSoft;
-  ctx.font = 'italic 44px "Cormorant Garamond", serif';
-  ctx.fillText(d.spreadName, W / 2, 360);
-
-  drawDivider(ctx, W / 2, 410, 2);
+  drawDivider(ctx, W / 2, 196, 1.5);
 }
 
 function drawFooter(ctx: CanvasRenderingContext2D, d: ShareCardData) {
-  // 底部品牌（放大）
+  const y = H - 100;
+  drawDivider(ctx, W / 2, y - 20, 1.5);
+
   ctx.fillStyle = T.gold;
-  ctx.font = '600 38px "PingFang SC", sans-serif';
+  ctx.font = '600 34px "PingFang SC", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`🌙 塔罗匣 · Arcana Box`, W / 2, H - 160);
+  ctx.fillText('塔罗匣 Arcana Box', W / 2, y + 30);
 
   ctx.fillStyle = T.textFaint;
-  ctx.font = '400 22px sans-serif';
-  ctx.fillText(`扫码解锁你的牌阵 · tarotbox.cn`, W / 2, H - 120);
+  ctx.font = '400 20px sans-serif';
+  ctx.fillText(`tarotbox.cn`, W / 2, y + 58);
 }
 
 // ============================================================
-// 模板 1：金句型（70% 用户用）
-// 重点：大幅金句 + 完整牌阵 + 问题 + 氛围
+// 模板 1：金句型
+// 布局：品牌 → 问题 → 金句 → 答案 → 牌阵 → 氛围 → footer
 // ============================================================
 async function drawQuoteTemplate(ctx: CanvasRenderingContext2D, d: ShareCardData) {
   drawBaseBackground(ctx);
   drawStars(ctx, 20);
   drawHeader(ctx, d);
 
-  // 金句（最突出）
-  ctx.fillStyle = T.goldSoft;
-  ctx.font = 'italic 28px "Noto Serif SC", serif';
+  let y = 240;
+
+  // 问题（小字标签 + 内容）
+  ctx.fillStyle = T.textFaint;
+  ctx.font = 'italic 22px "Noto Serif SC", serif';
   ctx.textAlign = 'center';
-  ctx.fillText('✦  金  句  ✦', W / 2, 500);
+  ctx.fillText('— 你问的 —', W / 2, y);
+  y += 30;
+  ctx.fillStyle = T.text;
+  ctx.font = '500 30px "Noto Serif SC", serif';
+  y = drawWrappedText(ctx, `"${d.question.slice(0, 60)}"`, W / 2, y, 880, 46);
+
+  y += 20;
+  drawDivider(ctx, W / 2, y, 1);
+  y += 24;
+
+  // 金句标签
+  ctx.fillStyle = T.goldSoft;
+  ctx.font = 'italic 24px "Noto Serif SC", serif';
+  ctx.fillText('✦  金  句  ✦', W / 2, y);
+  y += 36;
 
   // 金句主体（最大字号）
   ctx.fillStyle = T.text;
-  ctx.font = '600 60px "Noto Serif SC", serif';
-  const quote = (d.goldenPhrase || d.summary || d.question || '每张牌都是一面镜子').slice(0, 90);
-  let y = drawWrappedText(ctx, `"${quote}"`, W / 2, 580, 940, 90);
+  ctx.font = '600 54px "Noto Serif SC", serif';
+  y = drawWrappedText(ctx, `"${d.goldenPhrase || d.summary || '每张牌都是一面镜子'}".slice(0, 80)`, W / 2, y, 920, 82);
+
+  y += 16;
 
   // 简短答案
-  y += 30;
   ctx.fillStyle = T.goldSoft;
-  ctx.font = 'italic 32px "Noto Serif SC", serif';
-  y = drawWrappedText(ctx, `— ${(d.briefAnswer || '').slice(0, 60)}`, W / 2, y, 900, 50);
+  ctx.font = 'italic 28px "Noto Serif SC", serif';
+  y = drawWrappedText(ctx, `— ${(d.briefAnswer || '').slice(0, 60)}`, W / 2, y, 880, 44);
 
-  // 分隔
-  y += 30;
+  y += 16;
   drawDivider(ctx, W / 2, y, 1);
-  y += 40;
+  y += 24;
 
-  // 问题
-  ctx.fillStyle = T.textFaint;
-  ctx.font = 'italic 26px "Noto Serif SC", serif';
-  ctx.fillText('— 你问的 —', W / 2, y);
-  y += 36;
-  ctx.fillStyle = T.text;
-  ctx.font = '500 32px "Noto Serif SC", serif';
-  y = drawWrappedText(ctx, `"${d.question.slice(0, 60)}${d.question.length > 60 ? '…' : ''}"`, W / 2, y, 900, 48);
-
-  // 牌图（小尺寸，最多 5 张）
-  y += 30;
+  // 牌阵（最多 5 张，留足空间）
   const displayCards = d.cards.slice(0, 5);
-  y = await drawCardGrid(ctx, displayCards, W / 2, y, 940);
+  y = await drawCardGrid(ctx, displayCards, W / 2, y, 940, 5);
+
+  y += 16;
 
   // 氛围
-  y += 30;
   ctx.fillStyle = T.textFaint;
   ctx.font = 'italic 22px "Noto Serif SC", serif';
   ctx.fillText('— 整体氛围 —', W / 2, y);
-  y += 32;
+  y += 30;
   ctx.fillStyle = T.goldSoft;
-  ctx.font = 'italic 28px "Noto Serif SC", serif';
-  y = drawWrappedText(ctx, d.atmosphere.slice(0, 80) || '温柔而坚定的能量在场', W / 2, y, 900, 44);
+  ctx.font = 'italic 26px "Noto Serif SC", serif';
+  y = drawWrappedText(ctx, d.atmosphere.slice(0, 80) || '温柔而坚定的能量在场', W / 2, y, 880, 42);
 
   drawFooter(ctx, d);
 }
 
 // ============================================================
-// 模板 2：问题型（20% 用户用）
-// 重点：问题 + 全牌展示 + 邀请扫码
+// 模板 2：问题型
+// 布局：品牌 → 牌阵 → 问题 → 金句 → footer
 // ============================================================
 async function drawQuestionTemplate(ctx: CanvasRenderingContext2D, d: ShareCardData) {
   drawBaseBackground(ctx);
   drawStars(ctx, 20);
   drawHeader(ctx, d);
 
-  // 问题（最突出）
-  ctx.fillStyle = T.textFaint;
-  ctx.font = '500 26px "PingFang SC", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('— 你抽的牌 —', W / 2, 480);
+  let y = 240;
 
-  // 全牌展示（最多 10 张）
-  const y0 = 530;
-  const y1 = await drawCardGrid(ctx, d.cards, W / 2, y0, 940);
+  // 牌阵（最多 10 张）
+  const displayCards = d.cards.slice(0, 10);
+  y = await drawCardGrid(ctx, displayCards, W / 2, y, 940);
+
+  y += 20;
+  drawDivider(ctx, W / 2, y, 1);
+  y += 24;
 
   // 问题
-  let y = y1 + 50;
+  ctx.fillStyle = T.textFaint;
+  ctx.font = 'italic 22px "Noto Serif SC", serif';
+  ctx.fillText('— 你问的 —', W / 2, y);
+  y += 30;
+  ctx.fillStyle = T.text;
+  ctx.font = '700 46px "Noto Serif SC", serif';
+  y = drawWrappedText(ctx, `"${d.question.slice(0, 50)}${d.question.length > 50 ? '…' : ''}"`, W / 2, y, 880, 68);
+
+  y += 16;
+
+  // 金句
   ctx.fillStyle = T.goldSoft;
   ctx.font = 'italic 26px "Noto Serif SC", serif';
-  ctx.fillText('— 你问的 —', W / 2, y);
-  y += 36;
-  ctx.fillStyle = T.text;
-  ctx.font = '700 52px "Noto Serif SC", serif';
-  y = drawWrappedText(ctx, `"${d.question.slice(0, 50)}${d.question.length > 50 ? '…' : ''}"`, W / 2, y, 900, 72);
+  y = drawWrappedText(ctx, (d.goldenPhrase || d.summary || '').slice(0, 80), W / 2, y, 880, 42);
 
-  // 金句小标
-  y += 30;
-  ctx.fillStyle = T.gold;
-  ctx.font = 'italic 30px "Noto Serif SC", serif';
-  y = drawWrappedText(ctx, (d.goldenPhrase || d.summary || '').slice(0, 80), W / 2, y, 900, 48);
+  y += 16;
+
+  // 氛围（小字）
+  ctx.fillStyle = T.textFaint;
+  ctx.font = 'italic 22px "Noto Serif SC", serif';
+  y = drawWrappedText(ctx, `氛围：${(d.atmosphere || '').slice(0, 60)}`, W / 2, y, 880, 36);
 
   drawFooter(ctx, d);
 }
 
 // ============================================================
-// 模板 3：氛围型（10% 用户用）
-// 重点：主牌 + 氛围描述 + 神秘装饰
+// 模板 3：氛围型
+// 布局：品牌 → 主牌 + 牌名 → 氛围 → 金句 → 问题 → footer
 // ============================================================
 async function drawMoodTemplate(ctx: CanvasRenderingContext2D, d: ShareCardData) {
   drawBaseBackground(ctx);
   drawStars(ctx, 30);
 
-  // 顶部小标签
+  // 品牌（顶部）
   ctx.fillStyle = T.gold;
-  ctx.font = '700 32px "PingFang SC", sans-serif';
+  ctx.font = '700 44px "PingFang SC", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`✦ ${d.siteName} ✦`, W / 2, 140);
+  ctx.fillText('塔罗匣 Arcana Box', W / 2, 120);
 
   ctx.fillStyle = T.textFaint;
-  ctx.font = '400 22px sans-serif';
-  ctx.fillText(d.siteUrl, W / 2, 180);
+  ctx.font = '400 20px sans-serif';
+  ctx.fillText(d.siteUrl, W / 2, 158);
 
-  // 神秘符号外圈
-  ctx.save();
-  ctx.strokeStyle = T.gold;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(W / 2, 480, 250, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.strokeStyle = T.goldSoft;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(W / 2, 480, 200, 0, Math.PI * 2);
-  ctx.stroke();
+  drawDivider(ctx, W / 2, 196, 1.5);
 
-  // 主牌图（中央）
   const mainCard = d.cards[0];
+
+  // 主牌展示区（居中偏上）
+  const cardCenterX = W / 2;
+  const cardTop = 240;
+  const cardW = 240;
+  const cardH = 370;
+  const cardLeft = cardCenterX - cardW / 2;
+
   if (mainCard?.imageUrl) {
     const img = await loadImage(mainCard.imageUrl);
     if (img) {
       ctx.save();
-      const cw = 220, ch = 340;
       if (mainCard.orientation === 'reversed') {
-        ctx.translate(W / 2, 480);
+        ctx.translate(cardCenterX, cardTop + cardH / 2);
         ctx.rotate(Math.PI);
-        ctx.drawImage(img, -cw / 2, -ch / 2, cw, ch);
+        ctx.drawImage(img, -cardW / 2, -cardH / 2, cardW, cardH);
       } else {
-        ctx.drawImage(img, W / 2 - cw / 2, 480 - ch / 2, cw, ch);
+        ctx.drawImage(img, cardLeft, cardTop, cardW, cardH);
       }
       ctx.restore();
       ctx.strokeStyle = T.gold;
       ctx.lineWidth = 2;
-      ctx.strokeRect(W / 2 - 110, 310, 220, 340);
+      ctx.strokeRect(cardLeft, cardTop, cardW, cardH);
+    } else {
+      drawCardPlaceholder(ctx, cardLeft, cardTop, cardW, cardH);
     }
   } else {
-    // 五角星占位
-    ctx.strokeStyle = T.gold;
-    ctx.lineWidth = 2;
-    drawStar(ctx, W / 2, 480, 5, 130, 60);
+    drawCardPlaceholder(ctx, cardLeft, cardTop, cardW, cardH);
   }
-  ctx.restore();
 
-  // 主牌名
+  let y = cardTop + cardH;
+
+  // 牌名（大字）
   ctx.fillStyle = T.gold;
-  ctx.font = '700 64px "Cormorant Garamond", serif';
+  ctx.font = '700 58px "Cormorant Garamond", serif';
   ctx.textAlign = 'center';
-  ctx.fillText(mainCard?.name || d.cardName || '愚者', W / 2, 800);
+  ctx.fillText(mainCard?.name || d.cardName || '愚者', W / 2, y + 50);
 
-  // 牌阵名
+  // 牌阵 + 正逆
   ctx.fillStyle = T.goldSoft;
-  ctx.font = 'italic 32px "Cormorant Garamond", serif';
-  ctx.fillText(`${d.spreadName} · ${mainCard?.orientation === 'reversed' ? '逆位' : '正位'}`, W / 2, 850);
+  ctx.font = 'italic 28px "Cormorant Garamond", serif';
+  ctx.fillText(`${d.spreadName} · ${mainCard?.orientation === 'reversed' ? '逆位' : '正位'}`, W / 2, y + 86);
 
-  // 氛围描述（大块）
-  drawDivider(ctx, W / 2, 900);
+  y += 110;
+  drawDivider(ctx, W / 2, y, 1);
+  y += 24;
+
+  // 氛围标签
   ctx.fillStyle = T.textFaint;
-  ctx.font = 'italic 24px "Noto Serif SC", serif';
-  ctx.fillText('— 整  体  氛  围 —', W / 2, 950);
-  ctx.fillStyle = T.text;
-  ctx.font = '500 32px "Noto Serif SC", serif';
-  drawWrappedText(ctx, d.atmosphere.slice(0, 120) || '温柔而坚定的能量在场', W / 2, 1010, 900, 50);
+  ctx.font = 'italic 22px "Noto Serif SC", serif';
+  ctx.fillText('— 整体氛围 —', W / 2, y);
+  y += 30;
 
-  // 金句（底部小标）
+  // 氛围内容
+  ctx.fillStyle = T.text;
+  ctx.font = '500 30px "Noto Serif SC", serif';
+  y = drawWrappedText(ctx, d.atmosphere.slice(0, 100) || '温柔而坚定的能量在场', W / 2, y, 880, 46);
+
+  y += 20;
+
+  // 金句
   ctx.fillStyle = T.goldSoft;
   ctx.font = 'italic 26px "Noto Serif SC", serif';
-  drawWrappedText(ctx, (d.goldenPhrase || d.summary || '').slice(0, 60), W / 2, 1200, 900, 42);
+  y = drawWrappedText(ctx, (d.goldenPhrase || d.summary || '').slice(0, 80), W / 2, y, 880, 42);
+
+  y += 20;
 
   // 问题（小字）
   ctx.fillStyle = T.textFaint;
-  ctx.font = 'italic 24px "Noto Serif SC", serif';
-  drawWrappedText(ctx, `"${d.question.slice(0, 50)}${d.question.length > 50 ? '…' : ''}"`, W / 2, 1340, 900, 40);
+  ctx.font = 'italic 22px "Noto Serif SC", serif';
+  ctx.fillText('— 你问的 —', W / 2, y);
+  y += 28;
+  ctx.fillStyle = T.text;
+  ctx.font = '400 24px "Noto Serif SC", serif';
+  y = drawWrappedText(ctx, `"${d.question.slice(0, 60)}${d.question.length > 60 ? '…' : ''}"`, W / 2, y, 880, 38);
 
   drawFooter(ctx, d);
 }
 
-function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outerR: number, innerR: number) {
-  let rot = (Math.PI / 2) * 3;
-  const step = Math.PI / spikes;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - outerR);
-  for (let i = 0; i < spikes; i++) {
-    ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
-    rot += step;
-    ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR);
-    rot += step;
-  }
-  ctx.lineTo(cx, cy - outerR);
-  ctx.closePath();
-  ctx.stroke();
+function drawCardPlaceholder(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  ctx.fillStyle = T.bgGrad;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = T.gold;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = T.goldSoft;
+  ctx.font = '500 40px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('✦', x + w / 2, y + h / 2 + 14);
 }
 
 // === 主入口 ===
 
-export async function generateShareCard(data: ShareCardData, template: 'quote' | 'question' | 'mood' = 'quote'): Promise<Blob> {
+export async function generateShareCard(
+  data: ShareCardData,
+  template: 'quote' | 'question' | 'mood' = 'quote'
+): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -528,9 +537,6 @@ export async function generateShareCard(data: ShareCardData, template: 'quote' |
   });
 }
 
-/**
- * 触发浏览器下载
- */
 export function downloadShareCard(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
