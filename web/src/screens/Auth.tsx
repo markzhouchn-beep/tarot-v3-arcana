@@ -245,6 +245,10 @@ export default function Auth() {
                 onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && sendCode()}
                 autoComplete="email"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
                 autoFocus
               />
               <p className="caps text-2xs text-fg-faint mt-xs">
@@ -304,6 +308,10 @@ export default function Auth() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               autoComplete="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="email"
             />
           </div>
 
@@ -317,6 +325,9 @@ export default function Auth() {
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handlePassword()}
               autoComplete={action === 'register' ? 'new-password' : 'current-password'}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
             />
           </div>
 
