@@ -228,7 +228,9 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'MISSING_FIELDS' });
     }
 
-    const user = db.prepare(`SELECT * FROM users WHERE email = ?`).get(email);
+    // Bug fix: email 必须 lowercase（DB 存的是小写，否则大小写不匹配 → INVALID_CREDENTIALS）
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const user = db.prepare(`SELECT * FROM users WHERE email = ?`).get(normalizedEmail);
     if (!user || !user.password_hash) {
       return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
     }
