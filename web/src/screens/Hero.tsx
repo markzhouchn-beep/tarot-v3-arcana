@@ -371,22 +371,18 @@ function PriceCard({
 
   return (
     <div
-      className={`panel p-md flex flex-col gap-sm transition-all duration-fast hover:border-primary ${
+      className={`panel p-sm flex flex-col gap-xs transition-all duration-fast hover:border-primary ${
         featured ? 'bg-bg-occult border-primary' : ''
       }`}
     >
-      {/* 标题 + 价格 */}
-      <div className="flex items-baseline justify-between">
-        <div>
-          <div className={`font-display text-2xl ${featured ? 'text-primary' : 'text-fg'}`}>
-            {title}
-          </div>
-          <div className="text-2xs text-fg-faint mt-1">{desc}</div>
+      {/* 标题 + 描述 + 价格（单行紧凑） */}
+      <div className="flex items-baseline gap-xs min-w-0">
+        <div className={`font-display text-2xl font-bold shrink-0 ${featured ? 'text-primary' : 'text-fg'}`}>
+          {title}
         </div>
-        <div className="text-right">
-          <div className={`font-body text-xl font-bold ${featured ? 'text-primary' : 'text-fg'}`}>
-            ¥{amount}
-          </div>
+        <div className="text-2xs text-fg-faint truncate flex-1 min-w-0">{desc}</div>
+        <div className={`font-body text-lg font-bold shrink-0 ${featured ? 'text-primary' : 'text-fg'}`}>
+          ¥{amount}
         </div>
       </div>
 
@@ -396,7 +392,7 @@ function PriceCard({
         onChange={(e) => setQuestion(e.target.value)}
         placeholder={questionHint}
         maxLength={500}
-        rows={2}
+        rows={1}
         className="w-full bg-bg-canvas border border-border rounded px-sm py-xs text-xs text-fg placeholder:text-fg-faint font-body resize-none focus:outline-none focus:border-primary"
       />
 
@@ -409,7 +405,7 @@ function PriceCard({
             : 'border border-primary text-primary hover:bg-primary hover:text-bg-canvas'
         }`}
       >
-        ✦ 立即抽 →
+        ✦ 立即抽
       </button>
     </div>
   );
