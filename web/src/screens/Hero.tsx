@@ -149,6 +149,25 @@ export default function Hero() {
         </button>
       </section>
 
+      {/* Oracle 追问入口 */}
+      <section className="mb-3xl">
+        <button
+          onClick={() => navigate('/oracle')}
+          className="w-full panel p-lg text-left transition-all duration-fast hover:border-primary"
+        >
+          <div className="flex items-center gap-md">
+            <div className="text-2xl">🔮</div>
+            <div className="flex-1">
+              <div className="caps text-secondary mb-2xs">Oracle · 塔罗追问</div>
+              <p className="text-sm text-fg-secondary font-body">
+                抽完牌还不解？继续追问 · 5 轮对话 · 塔罗师深度解答
+              </p>
+            </div>
+            <div className="text-fg-faint">→</div>
+          </div>
+        </button>
+      </section>
+
       {/* 大家都在问什么 · 真实示例问题（脱敏） */}
       <section className="mb-3xl">
         <div className="caps text-fg-faint text-center mb-md">— 大家都在问什么 —</div>
@@ -227,25 +246,6 @@ export default function Hero() {
               <div className="caps text-primary mb-2xs">会员 · 月卡 ¥19.9 / 年卡 ¥199</div>
               <p className="text-sm text-fg-secondary font-body">
                 每日 3 次 Yes/No · 5 次追问 · 解锁全部高级牌阵
-              </p>
-            </div>
-            <div className="text-fg-faint">→</div>
-          </div>
-        </button>
-      </section>
-
-      {/* Oracle 追问入口 */}
-      <section className="mb-3xl">
-        <button
-          onClick={() => navigate('/oracle')}
-          className="w-full panel p-lg text-left transition-all duration-fast hover:border-primary"
-        >
-          <div className="flex items-center gap-md">
-            <div className="text-2xl">🔮</div>
-            <div className="flex-1">
-              <div className="caps text-secondary mb-2xs">Oracle · 塔罗追问</div>
-              <p className="text-sm text-fg-secondary font-body">
-                抽完牌还不解？继续追问 · 5 轮对话 · 塔罗师深度解答
               </p>
             </div>
             <div className="text-fg-faint">→</div>
