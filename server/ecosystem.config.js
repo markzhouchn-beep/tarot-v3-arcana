@@ -10,9 +10,11 @@ export default {
     autorestart: true,
     watch: false,
     max_memory_restart: '512M',
+    cwd: '/var/www/tarot-app-v3/server',
     env: {
       NODE_ENV: 'production',
       PORT: 3003,
+      DB_PATH: '/var/www/tarot-app-v3/server/data/tarot_v3.db',
     },
     error_file: '/var/log/tarot-v3/error.log',
     out_file: '/var/log/tarot-v3/out.log',
