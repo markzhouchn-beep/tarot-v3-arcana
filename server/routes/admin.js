@@ -446,10 +446,11 @@ router.get('/stats/overview', requireAdmin, (req, res) => {
     const today = new Date().toISOString().slice(0, 10);
     const todayStart = new Date(today).getTime();
 
+    // 订阅会员订单 amount=0，不计入收入
     const ordersToday = db.prepare(`
       SELECT COUNT(*) as cnt, COALESCE(SUM(amount), 0) as revenue
       FROM orders
-      WHERE date(created_at/1000, 'unixepoch') = ? AND is_test = 0 AND status = 'paid'
+      WHERE date(created_at/1000, 'unixepoch') = ? AND is_test = 0 AND status = 'paid' AND amount > 0
     `).get(today);
 
     const subsActive = db.prepare(`
