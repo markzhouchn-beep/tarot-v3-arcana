@@ -1,7 +1,6 @@
 // ============================================================
-// screens/Hero.tsx · 首页（品牌 + Yes/No 入口 + 主题牌阵 + 会员入口）
-// Phase 1 · 第 1 页
-// 2026-09-06 v3.0.3：新增「大家都在问什么」示例问题模块（替代用户评价）
+// screens/Hero.tsx · 首页（3 付费档位 + 缩 Yes/No + 缩追问 + 其他）
+// v3.0.4 (2026-09-07): 首屏改 3 卡片付费档位，去掉分散的免费 CTA
 // ============================================================
 
 import { useNavigate } from 'react-router-dom';
@@ -12,10 +11,10 @@ import { authApi } from '../lib/api';
 interface SampleQuestion {
   id: string;
   question: string;
-  card: string;          // 牌名
-  cardSymbol: string;    // 牌符号
-  snippet: string;       // AI 解读片段
-  action: string;        // 行动建议
+  card: string;
+  cardSymbol: string;
+  snippet: string;
+  action: string;
 }
 
 const SAMPLE_QUESTIONS: SampleQuestion[] = [
@@ -96,7 +95,7 @@ export default function Hero() {
   return (
     <Layout orbs size="md">
       {/* 屏顶 · 登录 / 会员入口 */}
-      <div className="flex justify-end mb-2xl">
+      <div className="flex justify-end mb-xl">
         {user ? (
           <button
             onClick={() => navigate('/dashboard')}
@@ -115,61 +114,85 @@ export default function Hero() {
       </div>
 
       {/* 品牌 */}
-      <header className="text-center mb-3xl animate-fade-in">
-        <div className="caps mb-md">— Mystic Vintage Dark —</div>
-        <h1 className="text-5xl text-gradient-gold mb-md animate-float-y">
+      <header className="text-center mb-2xl animate-fade-in">
+        <div className="caps mb-sm text-2xs">— Mystic Vintage Dark —</div>
+        <h1 className="text-4xl text-gradient-gold mb-xs animate-float-y">
           ✦ Arcana Box
         </h1>
-        <h2 className="text-xl font-display text-fg-secondary tracking-wide mb-xs">
+        <h2 className="text-base font-display text-fg-secondary tracking-wide mb-xs">
           塔 罗 匣
         </h2>
-        <p className="text-sm font-body text-fg-faint italic">
+        <p className="text-xs font-body text-fg-faint italic">
           答案就在牌面
         </p>
       </header>
 
-      {/* 主 CTA · 零门槛立即出答案 */}
-      <section className="mb-3xl">
+      {/* ⭐ 3 档付费抽牌（首页核心） */}
+      <section className="mb-xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-sm">
+          <PriceCard
+            spreadId="general-1"
+            tier="single"
+            amount={1}
+            title="1 张"
+            desc="单张指引"
+            questionHint="简单 Yes/No 或一句话"
+          />
+          <PriceCard
+            spreadId="general-3"
+            tier="three"
+            amount={1.9}
+            title="3 张"
+            desc="过去 · 现在 · 未来"
+            questionHint="看时间线 · 看关系走向"
+            featured
+          />
+          <PriceCard
+            spreadId="general-10"
+            tier="ten"
+            amount={9.9}
+            title="10 张"
+            desc="凯尔特十字 · 深度解读"
+            questionHint="复杂问题 · 1-2 分钟出结果"
+          />
+        </div>
+        <p className="caps text-2xs text-fg-faint text-center mt-sm">
+          不需注册 · 点完即抽 · 30 秒看解读
+        </p>
+      </section>
+
+      {/* Yes/No 快捷（单行） */}
+      <section className="mb-md">
         <button
-          onClick={() => navigate('/yes-no?quick=1')}
-          className="w-full panel p-2xl text-center transition-all duration-fast hover:border-primary hover:shadow-glow-gold bg-bg-occult animate-fade-in"
+          onClick={() => navigate('/yes-no')}
+          className="w-full panel p-md text-left transition-all duration-fast hover:border-primary flex items-center gap-md"
         >
-          {/* 牌背装饰 */}
-          <div className="text-5xl mb-lg animate-float-y">🂿</div>
-          <div className="caps text-primary mb-sm">免费 · 无需注册</div>
-          <h3 className="font-display text-3xl text-fg mb-sm">
-            免费抽一张 · 立即看答案
-          </h3>
-          <p className="text-sm text-fg-faint font-body mb-lg">
-            点击即抽 · 零门槛 · 30 秒内看到你的解读
-          </p>
-          <div className="inline-block px-lg py-sm bg-primary text-bg-canvas font-display text-lg rounded">
-            ✦ 立即开始 →
+          <span className="text-xl">🃏</span>
+          <div className="flex-1">
+            <div className="caps text-2xs text-secondary">免费 · 牌意库</div>
+            <div className="text-sm text-fg">Yes/No 单张快速指引</div>
           </div>
+          <span className="text-fg-faint text-xs">→</span>
         </button>
       </section>
 
-      {/* Oracle 追问入口 */}
-      <section className="mb-3xl">
+      {/* Oracle 追问（单行） */}
+      <section className="mb-2xl">
         <button
           onClick={() => navigate('/oracle')}
-          className="w-full panel p-lg text-left transition-all duration-fast hover:border-primary"
+          className="w-full panel p-md text-left transition-all duration-fast hover:border-primary flex items-center gap-md"
         >
-          <div className="flex items-center gap-md">
-            <div className="text-2xl">🔮</div>
-            <div className="flex-1">
-              <div className="caps text-secondary mb-2xs">Oracle · 塔罗追问</div>
-              <p className="text-sm text-fg-secondary font-body">
-                抽完牌还不解？继续追问 · 5 轮对话 · 塔罗师深度解答
-              </p>
-            </div>
-            <div className="text-fg-faint">→</div>
+          <span className="text-xl">🔮</span>
+          <div className="flex-1">
+            <div className="caps text-2xs text-secondary">Oracle · 追问</div>
+            <div className="text-sm text-fg">抽完牌还不解？5 轮对话深度解答</div>
           </div>
+          <span className="text-fg-faint text-xs">→</span>
         </button>
       </section>
 
       {/* 大家都在问什么 · 真实示例问题（脱敏） */}
-      <section className="mb-3xl">
+      <section className="mb-2xl">
         <div className="caps text-fg-faint text-center mb-md">— 大家都在问什么 —</div>
         <div className="space-y-md">
           {SAMPLE_QUESTIONS.map((q) => (
@@ -204,7 +227,7 @@ export default function Hero() {
       </section>
 
       {/* 主题牌阵入口 · 4 主题 */}
-      <section className="mb-3xl">
+      <section className="mb-2xl">
         <div className="caps text-fg-faint mb-md">— 选择主题 —</div>
         <div className="grid grid-cols-2 gap-md">
           <ThemeCard
@@ -235,7 +258,7 @@ export default function Hero() {
       </section>
 
       {/* 会员入口 */}
-      <section className="mb-3xl">
+      <section className="mb-2xl">
         <button
           onClick={() => navigate('/membership')}
           className="w-full panel p-lg text-left bg-bg-occult transition-all duration-fast hover:border-primary"
@@ -254,7 +277,7 @@ export default function Hero() {
       </section>
 
       {/* 塔罗百科 · 78 张含义 */}
-      <section className="mt-3xl mb-xl">
+      <section className="mt-2xl mb-xl">
         <div className="caps text-fg-faint text-center mb-md">— 塔罗百科 —</div>
         <div className="grid grid-cols-1 gap-xs">
           <a
@@ -306,6 +329,89 @@ export default function Hero() {
         <div className="caps">v3.0 · Phase 1 · 2026</div>
       </footer>
     </Layout>
+  );
+}
+
+// ============================================================
+// PriceCard · 付费档位卡片（带问题输入框）
+// ============================================================
+function PriceCard({
+  spreadId,
+  tier,
+  amount,
+  title,
+  desc,
+  questionHint,
+  featured = false,
+}: {
+  spreadId: string;
+  tier: 'single' | 'three' | 'ten';
+  amount: number;
+  title: string;
+  desc: string;
+  questionHint: string;
+  featured?: boolean;
+}) {
+  const navigate = useNavigate();
+  const [question, setQuestion] = useState('');
+
+  const handleDraw = () => {
+    if (!question.trim()) {
+      // 问题为空 → 跳 Ask 页让用户填
+      navigate(`/ask/${spreadId}`);
+      return;
+    }
+    if (question.length > 500) {
+      alert('问题太长（500字以内）');
+      return;
+    }
+    // 跳 Ask 页带 question 参数
+    navigate(`/ask/${spreadId}?question=${encodeURIComponent(question.trim())}`);
+  };
+
+  return (
+    <div
+      className={`panel p-md flex flex-col gap-sm transition-all duration-fast hover:border-primary ${
+        featured ? 'bg-bg-occult border-primary' : ''
+      }`}
+    >
+      {/* 标题 + 价格 */}
+      <div className="flex items-baseline justify-between">
+        <div>
+          <div className={`font-display text-2xl ${featured ? 'text-primary' : 'text-fg'}`}>
+            {title}
+          </div>
+          <div className="text-2xs text-fg-faint mt-1">{desc}</div>
+        </div>
+        <div className="text-right">
+          <div className={`font-body text-xl font-bold ${featured ? 'text-primary' : 'text-fg'}`}>
+            ¥{amount}
+          </div>
+        </div>
+      </div>
+
+      {/* 问题输入框 */}
+      <textarea
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+        placeholder={questionHint}
+        maxLength={500}
+        rows={2}
+        className="w-full bg-bg-canvas border border-border rounded px-sm py-xs text-xs text-fg placeholder:text-fg-faint font-body resize-none focus:outline-none focus:border-primary"
+      />
+
+      {/* CTA 按钮 */}
+      <button
+        onClick={handleDraw}
+        className={`w-full py-xs font-display text-sm rounded transition-all duration-fast ${
+          featured
+            ? 'bg-primary text-bg-canvas hover:shadow-glow-gold'
+            : 'border border-primary text-primary hover:bg-primary hover:text-bg-canvas'
+        }`}
+      >
+        ✦ 立即抽 →
+      </button>
+    </div>
   );
 }
 

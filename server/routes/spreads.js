@@ -12,6 +12,11 @@ const router = Router();
  * 牌阵元数据（Phase 1 由塔罗专家补全位置定义）
  */
 const SPREADS = {
+  // 通用单次（首页 3 卡片用，不绑主题）
+  'general-1': { name: '单张指引', theme: 'all', cards: 1, tier_required: 'registered', price: 1, original_price: 5 },
+  'general-3': { name: '过去 · 现在 · 未来', theme: 'all', cards: 3, tier_required: 'registered', price: 1.9, original_price: 10 },
+  'general-10': { name: '凯尔特十字', theme: 'all', cards: 10, tier_required: 'registered', positions: ['现状', '挑战', '根基', '近期过去', '理想结果', '近期未来', '自我认知', '环境影响', '希望与恐惧', '最终结果'] },
+
   // 感情主题
   'love-single': { name: '每日感情指引', theme: 'love', cards: 1, tier_required: 'registered', price: 1, original_price: 5, free_first: true },
   'love-3': { name: '过去 · 现在 · 未来', theme: 'love', cards: 3, tier_required: 'registered', price: 1.9, original_price: 10 },

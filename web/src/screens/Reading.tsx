@@ -394,6 +394,65 @@ export default function Reading() {
             </button>
           </div>
 
+          {/* 永久保存引导（仅未登录访客） */}
+          {!userEmail && (
+            <div className="panel p-md mt-lg border-secondary/30">
+              <div className="flex items-center gap-sm mb-sm">
+                <span className="text-lg">🔖</span>
+                <div className="flex-1">
+                  <div className="caps text-2xs text-secondary">永久保存 · 一键找回</div>
+                  <div className="text-sm text-fg">留下邮箱，这份解读就归你</div>
+                </div>
+              </div>
+              {emailStep === 'input' && (
+                <div className="flex gap-xs">
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="your@email.com"
+                    className="flex-1 bg-bg-canvas border border-border rounded px-sm py-xs text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-primary"
+                  />
+                  <button
+                    onClick={handleSendEmail}
+                    disabled={emailLoading}
+                    className="px-md py-xs text-sm bg-primary text-bg-canvas rounded disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {emailLoading ? '发送中' : '发验证码'}
+                  </button>
+                </div>
+              )}
+              {emailStep === 'code' && (
+                <div className="flex gap-xs">
+                  <input
+                    type="text"
+                    value={emailCode.join('')}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      setEmailCode(v.split('').concat(Array(6 - v.length).fill('')));
+                    }}
+                    placeholder="6 位验证码"
+                    className="flex-1 bg-bg-canvas border border-border rounded px-sm py-xs text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:border-primary"
+                  />
+                  <button
+                    onClick={handleVerifyEmailCode}
+                    disabled={emailLoading}
+                    className="px-md py-xs text-sm bg-primary text-bg-canvas rounded disabled:opacity-50"
+                  >
+                    验证
+                  </button>
+                </div>
+              )}
+              {emailStep === 'done' && emailMsg && (
+                <div className="text-xs text-primary">{emailMsg}</div>
+              )}
+              {emailMsg && emailStep !== 'done' && (
+                <div className="text-xs text-secondary mt-1">{emailMsg}</div>
+              )}
+              <div className="text-2xs text-fg-faint mt-xs">已有账号？登录后所有解读都在「我的」里</div>
+            </div>
+          )}
+
           {/* 追问引导（高优先级） */}
           <div className="panel p-lg bg-bg-occult border-primary/30 mt-lg">
             <div className="caps text-primary mb-xs">— 牌面还没说够 —</div>
