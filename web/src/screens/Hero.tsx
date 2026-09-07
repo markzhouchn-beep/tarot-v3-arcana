@@ -143,8 +143,8 @@ export default function Hero() {
             tier="three"
             amount={1.9}
             title="3 张"
-            desc="过去 · 现在 · 未来"
-            questionHint="看时间线 · 看关系走向"
+            desc="时间线"
+            questionHint="过去·现在·未来 · 看关系走向"
             featured
           />
           <PriceCard
@@ -152,7 +152,7 @@ export default function Hero() {
             tier="ten"
             amount={9.9}
             title="10 张"
-            desc="凯尔特十字 · 深度解读"
+            desc="凯尔特十字"
             questionHint="复杂问题 · 1-2 分钟出结果"
           />
         </div>
@@ -375,12 +375,14 @@ function PriceCard({
         featured ? 'bg-bg-occult border-primary' : ''
       }`}
     >
-      {/* 标题 + 描述 + 价格（单行紧凑） */}
+      {/* 张数（小）+ 牌阵名（大）+ 价格（单行紧凑） */}
       <div className="flex items-baseline gap-xs min-w-0">
-        <div className={`font-display text-2xl font-bold shrink-0 ${featured ? 'text-primary' : 'text-fg'}`}>
+        <div className="text-2xs text-fg-faint shrink-0">
           {title}
         </div>
-        <div className="text-2xs text-fg-faint truncate flex-1 min-w-0">{desc}</div>
+        <div className={`font-display text-lg font-bold truncate flex-1 min-w-0 ${featured ? 'text-primary' : 'text-fg'}`}>
+          {desc}
+        </div>
         <div className={`font-body text-lg font-bold shrink-0 ${featured ? 'text-primary' : 'text-fg'}`}>
           ¥{amount}
         </div>
