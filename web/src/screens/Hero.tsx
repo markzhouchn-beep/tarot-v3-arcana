@@ -356,17 +356,21 @@ function PriceCard({
   const [question, setQuestion] = useState('');
 
   const handleDraw = () => {
-    if (!question.trim()) {
-      // 问题为空 → 跳 Ask 页让用户填
+    // 无论有没有问题，都跳到 Ask 页面（让用户确认/修改）
+    if (question.trim()) {
+      navigate(`/ask/${spreadId}?question=${encodeURIComponent(question.trim())}`);
+    } else {
       navigate(`/ask/${spreadId}`);
-      return;
     }
-    if (question.length > 500) {
-      alert('问题太长（500字以内）');
-      return;
+  };
+
+  // 点击 textarea 焦点也跳 Ask 页面
+  const handleTextareaClick = () => {
+    if (question.trim()) {
+      navigate(`/ask/${spreadId}?question=${encodeURIComponent(question.trim())}`);
+    } else {
+      navigate(`/ask/${spreadId}`);
     }
-    // 跳 Ask 页带 question 参数
-    navigate(`/ask/${spreadId}?question=${encodeURIComponent(question.trim())}`);
   };
 
   return (
@@ -388,14 +392,17 @@ function PriceCard({
         </div>
       </div>
 
-      {/* 问题输入框 */}
+      {/* 问题输入框（点击进入 Ask 页面） */}
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
+        onClick={handleTextareaClick}
+        onFocus={handleTextareaClick}
         placeholder={questionHint}
         maxLength={500}
         rows={1}
-        className="w-full bg-bg-canvas border border-border rounded px-sm py-xs text-xs text-fg placeholder:text-fg-faint font-body resize-none focus:outline-none focus:border-primary"
+        readOnly
+        className="w-full bg-bg-canvas border border-border rounded px-sm py-xs text-xs text-fg placeholder:text-fg-faint font-body resize-none focus:outline-none focus:border-primary cursor-pointer"
       />
 
       {/* CTA 按钮 */}

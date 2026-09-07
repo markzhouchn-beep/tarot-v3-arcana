@@ -16,6 +16,7 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   const res = await fetch(`${BASE}${path}`, {
     credentials: 'include',
     headers,
+    cache: 'no-store',  // 防止 nginx ETag 304 + 空 body 导致前端解析失败
     ...restOptions,
   });
 

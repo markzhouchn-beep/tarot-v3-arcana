@@ -1,7 +1,6 @@
 // ============================================================
-// screens/Ask.tsx · /ask/:spread — 输入问题 + 牌阵确认
-// Phase 1.5 · 第 1 页（抽牌→解读 链路起点）
-// 创建：2026-09-01
+// screens/Ask.tsx · /ask/:spread — 提问 + 立即抽
+// v3.0.4 (2026-09-07): 简化结构，上面提问下面立即抽
 // ============================================================
 
 import { useEffect, useState } from 'react';
@@ -22,7 +21,7 @@ interface Spread {
 }
 
 const THEME_SYMBOL: Record<string, string> = {
-  love: '💞', career: '💼', money: '💰', self: '🌙',
+  love: '💞', career: '💼', money: '💰', self: '🌙', all: '✦',
 };
 
 function getDeviceId(): string {
@@ -47,9 +46,7 @@ export default function Ask() {
   const [tier, setTier] = useState<string>('guest');
   const [user, setUser] = useState<any>(null);
 
-  // 从 YesNo 跳转过来：预填问题 + 显示「推荐 3 张」提示
   const prefilledQuestion = searchParams.get('question') || '';
-  const fromYesNo = searchParams.get('from') === 'yesno';
 
   useEffect(() => {
     Promise.all([
@@ -86,8 +83,6 @@ export default function Ask() {
     setError(null);
     setSubmitting(true);
     try {
-      // tier 映射：仅映射 1/3/10 牌。5/7 牌走 spread.id 自己的定义。
-      // Bug fix 2026-09-03：原来「不是 1/3 就映射 ten」会让 5 牌变成 10 牌
       const tier = spread.cards === 1 ? 'single' : spread.cards === 3 ? 'three' : spread.cards === 10 ? 'ten' : 'custom';
       const result = await ordersApi.create({
         spread_type: spread.id,
@@ -96,12 +91,9 @@ export default function Ask() {
         tier,
         device_id: getDeviceId(),
       });
-      // 会员：afdianPayUrl=null，直接跳 draw
-      // 非会员：同步跳转爱发电支付（不 hack）
       if (result.afdianPayUrl) {
         setTimeout(() => { window.location.href = result.afdianPayUrl; }, 300);
       }
-      // 跳到抽牌动画
       navigate(`/draw/${result.orderId}`);
     } catch (err: any) {
       setError(err.message);
@@ -113,7 +105,7 @@ export default function Ask() {
   if (loading) {
     return (
       <Layout size="sm">
-        <ScreenHeader back="/spreads" title="加载中" />
+        <ScreenHeader back="/" title="加载中" />
         <div className="text-center py-3xl text-fg-faint">
           <div className="caps">加载牌阵信息</div>
         </div>
@@ -124,11 +116,11 @@ export default function Ask() {
   if (error && !spread) {
     return (
       <Layout size="sm">
-        <ScreenHeader back="/spreads" title="错误" />
+        <ScreenHeader back="/" title="错误" />
         <div className="panel p-lg border-secondary/30 bg-secondary/5">
           <p className="text-secondary">{error}</p>
-          <button onClick={() => navigate('/spreads')} className="btn-secondary mt-md">
-            返回牌阵选择
+          <button onClick={() => navigate('/')} className="btn-secondary mt-md">
+            返回首页
           </button>
         </div>
       </Layout>
@@ -139,74 +131,32 @@ export default function Ask() {
 
   return (
     <Layout size="sm">
-      <ScreenHeader back="/spreads" title="提问" />
+      <ScreenHeader back="/" title="提问" />
 
-      {/* YesNo 跳转过来的引导横幅 */}
-      {fromYesNo && (
-        <div className="panel p-md bg-primary/10 border-primary/40 mb-md">
-          <div className="caps text-primary mb-xs">— 根据你的问题推荐 —</div>
-          <p className="text-sm text-fg-secondary leading-relaxed">
-            3 张牌阵「<span className="text-fg">过去 · 现在 · 未来</span>」是分析"是 / 否"问题最常用的牌阵。AI 会用它生成完整解读。
-          </p>
-        </div>
-      )}
-
-      {/* 牌阵信息卡 */}
-      <div className="panel p-lg mb-xl text-center">
-        <div className="text-3xl mb-sm">{THEME_SYMBOL[spread.theme] || '✦'}</div>
-        <h1 className="font-display text-2xl text-fg mb-xs">
-          {spread.name}
-        </h1>
-        <div className="caps text-fg-faint mb-md">
-          {spread.cards} 张牌 · {spread.theme.toUpperCase()}
-        </div>
-
-        {/* 位置说明（如有） */}
-        {spread.positions && spread.positions.length > 0 && (
-          <div className="border-t border-border pt-md mt-md">
-            <div className="caps text-fg-faint mb-xs">位置</div>
-            <div className="text-xs text-fg-secondary font-body leading-relaxed">
-              {spread.positions.join(' · ')}
-            </div>
+      {/* 牌阵信息（极简卡片） */}
+      <div className="panel p-md mb-lg flex items-center gap-md">
+        <div className="text-3xl shrink-0">{THEME_SYMBOL[spread.theme] || '✦'}</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-display text-lg text-fg">{spread.name}</div>
+          <div className="caps text-2xs text-fg-faint">
+            {spread.cards} 张牌 · ¥{spread.price}
+            {tier === 'silver' || tier === 'gold' && ' · 会员免费'}
           </div>
-        )}
-
-        {/* 价格 */}
-        <div className="flex justify-center items-baseline gap-md mt-md">
-          {tier === 'silver' || tier === 'gold' ? (
-            <>
-              <span className="caps text-sm text-gradient-gold font-body font-bold">
-                ✦ {tier === 'gold' ? '金月' : '银月'}会员专享
-              </span>
-              <span className="caps text-2xs text-fg-faint line-through opacity-50">
-                ¥{spread.price}
-              </span>
-              <span className="caps text-2xs text-primary font-bold">
-                免费
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="num-display text-2xl text-primary">¥{spread.price}</span>
-              <span className="caps text-2xs text-fg-faint">
-                {spread.tier_required === 'registered' ? '注册用户' : `需 ${spread.tier_required.toUpperCase()}`}
-              </span>
-            </>
-          )}
         </div>
       </div>
 
-      {/* 问题输入 */}
-      <div className="mb-lg">
+      {/* 提问（主体） */}
+      <div className="mb-md">
         <label className="caps block mb-xs text-fg-faint">
           — 你想问什么 —
         </label>
         <textarea
-          className="input min-h-[140px] resize-none"
+          className="input min-h-[180px] resize-none text-base"
           placeholder="例如：&#10;· 我和他现在的关系是怎样的？&#10;· 这份工作是否值得继续？&#10;· 我该如何做出选择？"
           maxLength={500}
           value={question}
           onChange={e => setQuestion(e.target.value)}
+          autoFocus
         />
         <div className="flex justify-between mt-xs">
           <div className="caps text-2xs text-fg-faint">
@@ -218,34 +168,29 @@ export default function Ask() {
         </div>
       </div>
 
-      {/* 提示 */}
-      <div className="panel p-md bg-bg-occult mb-lg">
-        <div className="caps text-primary mb-xs">— 流程说明 —</div>
-        <ul className="text-xs text-fg-secondary font-body space-y-xs">
-          <li>· 确认问题后进入抽牌仪式（3 秒）</li>
-          <li>· 系统抽牌 → 进入牌阵展示页</li>
-          <li>· 付费解锁完整 AI 解读</li>
-        </ul>
-      </div>
-
-      {/* 错误 */}
+      {/* 错误提示 */}
       {error && (
         <div className="text-sm text-secondary text-center border border-secondary/30 bg-secondary/5 px-md py-sm mb-md">
           {error}
         </div>
       )}
 
-      {/* 提交 */}
-      <Button onClick={handleSubmit} loading={submitting} fullWidth size="lg">
-        {tier === 'silver' || tier === 'gold' ? '✦ 免费抽牌 · 直接解读' : '✦ 确认 · 进入抽牌仪式'}
+      {/* 立即抽按钮（底部） */}
+      <Button
+        onClick={handleSubmit}
+        loading={submitting}
+        fullWidth
+        size="lg"
+      >
+        {tier === 'silver' || tier === 'gold' ? '✦ 立即抽 · 会员免费' : `✦ 立即抽 · ¥${spread.price}`}
       </Button>
 
       {/* 安全网 */}
       <div className="text-center mt-md">
-        <p className="text-xs text-fg-faint">
+        <p className="text-2xs text-fg-faint">
           {tier === 'silver' || tier === 'gold'
-            ? '会员订阅期间内无限解读，无额外费用'
-            : '提交后将创建订单，但还未支付 · 随时可取消'}
+            ? '会员订阅期内无限解读，无额外费用'
+            : '不需注册 · 30 秒看解读 · 随时可取消'}
         </p>
       </div>
     </Layout>
