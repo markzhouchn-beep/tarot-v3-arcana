@@ -124,7 +124,7 @@ export function buildSubscriptionPayUrl(planId, customOrderId) {
   */
 export function buildProductPayUrl(skuId, customOrderId) {
   if (!skuId) return null;
-  return `https://afdian.com/order/create?product_id=${skuId}&custom_order_id=${encodeURIComponent(customOrderId)}`;
+  return `https://ifdian.net/order/create?plan_id=${skuId}&product_type=1&custom_order_id=${encodeURIComponent(customOrderId)}`;
 }
 
 /**
