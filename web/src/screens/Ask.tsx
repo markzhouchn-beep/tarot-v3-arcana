@@ -91,9 +91,6 @@ export default function Ask() {
         tier,
         device_id: getDeviceId(),
       });
-      if (result.afdianPayUrl) {
-        setTimeout(() => { window.location.href = result.afdianPayUrl; }, 300);
-      }
       navigate(`/draw/${result.orderId}`);
     } catch (err: any) {
       setError(err.message);
