@@ -57,15 +57,8 @@ export default function Checkout() {
         tier: product.id,
         device_id: getDeviceId(),
       });
-      const payUrl = (result as any).afdianPayUrl;
-      if (!payUrl) {
-        setError('支付链接未生成');
-        return;
-      }
-      // 跳到 spread 页启动轮询
+      // 跳 spread 等待解读，后端返回的 afdian_pay_url 会被 Spread 读取并跳转
       navigate(`/spread/${result.orderId}`);
-      // 同步跳转到爱发电支付（不 hack，不弹窗）
-      setTimeout(() => { window.location.href = payUrl; }, 300);
     } catch (err: any) {
       setError(err.message);
     } finally {

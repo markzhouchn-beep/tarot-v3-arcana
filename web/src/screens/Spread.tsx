@@ -73,7 +73,7 @@ export default function Spread() {
     }
   };
 
-  // v3.0.1 真跳爱发电：同步开 about:blank → 异步赋 payUrl
+  // v3.0.2：直接跳爱发电收银台，不需要弹窗
   const handlePay = () => {
     if (!order) return;
     const payUrl = (order as any).afdian_pay_url;
@@ -81,17 +81,8 @@ export default function Spread() {
       setError('支付链接未生成，请刷新页面重试');
       return;
     }
-    // 关键：用户点击事件内同步打开 about:blank（防浏览器拦截）
-    const win = window.open('about:blank', '_blank');
-    if (!win) {
-      setError('浏览器拦截了弹出窗口，请允许弹窗后重试');
-      return;
-    }
-    win.document.write('<p style="font-family:sans-serif;padding:40px;text-align:center;">正在跳转到爱发电支付...</p>');
-    // 后异步跳
-    setTimeout(() => { win.location.href = payUrl; }, 100);
-    // 启动轮询（每 5s 查一次订单状态，命中自动跳解读）
-    startPolling();
+    // 直接跳转，支付完成后用户回来页面自动刷新轮询
+    window.location.href = payUrl;
   };
 
   const startPolling = () => {

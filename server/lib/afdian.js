@@ -119,11 +119,12 @@ export function buildSubscriptionPayUrl(planId, customOrderId) {
 }
 
 /**
-  * 生成商品方案支付 URL
+  * 生成商品方案支付 URL（直接进收银台，不需要过产品页 auth）
+  * 使用 /order/create 端点，未登录用户也能看到价格和支付按钮
   */
 export function buildProductPayUrl(skuId, customOrderId) {
   if (!skuId) return null;
-  return `https://afdian.com/item/${skuId}?custom_order_id=${encodeURIComponent(customOrderId)}`;
+  return `https://afdian.com/order/create?product_id=${skuId}&custom_order_id=${encodeURIComponent(customOrderId)}`;
 }
 
 /**
