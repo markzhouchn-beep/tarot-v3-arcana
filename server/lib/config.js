@@ -49,10 +49,14 @@ export const config = {
   AFDIAN_PLAN_GOLD_MONTHLY: str('AFDIAN_PLAN_GOLD_MONTHLY', ''),
   AFDIAN_PLAN_GOLD_YEARLY: str('AFDIAN_PLAN_GOLD_YEARLY', ''),
 
-  // 商品 sku_id
-  AFDIAN_SKU_SINGLE: str('AFDIAN_SKU_SINGLE', ''),
-  AFDIAN_SKU_THREE: str('AFDIAN_SKU_THREE', ''),
-  AFDIAN_SKU_TEN: str('AFDIAN_SKU_TEN', ''),
+  // 商品 plan_id（产品页 URL 中的 ID）
+  AFDIAN_PLAN_SINGLE: str('AFDIAN_PLAN_SINGLE', ''),
+  AFDIAN_PLAN_THREE: str('AFDIAN_PLAN_THREE', ''),
+  AFDIAN_PLAN_TEN: str('AFDIAN_PLAN_TEN', ''),
+  // 商品 sku_id（具体型号 ID，查询 query-plan API 获取）
+  AFDIAN_SKU_ID_SINGLE: str('AFDIAN_SKU_ID_SINGLE', ''),
+  AFDIAN_SKU_ID_THREE: str('AFDIAN_SKU_ID_THREE', ''),
+  AFDIAN_SKU_ID_TEN: str('AFDIAN_SKU_ID_TEN', ''),
 
   // 定价
   PRICE_SINGLE: float('PRICE_SINGLE', 1.9),

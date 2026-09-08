@@ -28,17 +28,18 @@ router.post('/create', optionalAuth, (req, res) => {
     // 价格映射（统一 key：'single' / 'three' / 'ten'，front 贺 v2.0 lite/classic/deep 都接受）
     const PRICE_MAP = {
       // v3.0 前端 tier 值
-      single: { amount: config.PRICE_SINGLE, sku: config.AFDIAN_SKU_SINGLE, afdian_type: 'sku' },
-      three: { amount: config.PRICE_THREE, sku: config.AFDIAN_SKU_THREE, afdian_type: 'sku' },
-      ten: { amount: config.PRICE_TEN, sku: config.AFDIAN_SKU_TEN, afdian_type: 'sku' },
+      single: { amount: config.PRICE_SINGLE, planId: config.AFDIAN_PLAN_SINGLE, skuId: config.AFDIAN_SKU_ID_SINGLE },
+      three: { amount: config.PRICE_THREE, planId: config.AFDIAN_PLAN_THREE, skuId: config.AFDIAN_SKU_ID_THREE },
+      ten: { amount: config.PRICE_TEN, planId: config.AFDIAN_PLAN_TEN, skuId: config.AFDIAN_SKU_ID_TEN },
       // v2.0 兼容
-      lite: { amount: config.PRICE_SINGLE, sku: config.AFDIAN_SKU_SINGLE, afdian_type: 'sku' },
-      classic: { amount: config.PRICE_THREE, sku: config.AFDIAN_SKU_THREE, afdian_type: 'sku' },
-      deep: { amount: config.PRICE_TEN, sku: config.AFDIAN_SKU_TEN, afdian_type: 'sku' },
+      lite: { amount: config.PRICE_SINGLE, planId: config.AFDIAN_PLAN_SINGLE, skuId: config.AFDIAN_SKU_ID_SINGLE },
+      classic: { amount: config.PRICE_THREE, planId: config.AFDIAN_PLAN_THREE, skuId: config.AFDIAN_SKU_ID_THREE },
+      deep: { amount: config.PRICE_TEN, planId: config.AFDIAN_PLAN_TEN, skuId: config.AFDIAN_SKU_ID_TEN },
     };
     const tierInfo = PRICE_MAP[tier] || PRICE_MAP.classic;
     const amount = tierInfo.amount;
-    const skuId = tierInfo.sku || tierInfo.afdian_type === 'sku' ? tierInfo.sku : null;
+    const planId = tierInfo.planId || null;
+    const skuId = tierInfo.skuId || null;
 
     // 牌张数推算
     // 原则：优先用 spread_type 对应的牌阵定义里的 cards 字段；
@@ -106,9 +107,9 @@ router.post('/create', optionalAuth, (req, res) => {
     db.prepare(`
       INSERT INTO orders (
         id, user_id, tier, spread_type, spread_theme, question, cards_json,
-        amount, status, paid_amount, afdian_out_trade_no, afdian_sku_id, is_test, device_id, created_at, updated_at, paid_at
+        amount, status, paid_amount, afdian_out_trade_no, afdian_plan_id, afdian_sku_id, is_test, device_id, created_at, updated_at, paid_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       orderId,
       req.user?.id || null,
@@ -121,6 +122,7 @@ router.post('/create', optionalAuth, (req, res) => {
       initialStatus,
       initialPaidAmount,
       outTradeNo,
+      planId,
       skuId,
       isTest,
       device_id || null,
@@ -162,7 +164,7 @@ router.post('/create', optionalAuth, (req, res) => {
     }
 
     // 支付 URL：会员/首单免费时不需要
-    const payUrl = (isMember || isFreeFirst) ? null : (skuId ? buildProductPayUrl(skuId, orderId) : null);
+    const payUrl = (isMember || isFreeFirst) ? null : (planId && skuId ? buildProductPayUrl(planId, skuId, orderId) : null);
 
     res.json({
       ok: true,
@@ -214,7 +216,7 @@ router.get('/:id', (req, res) => {
       // v3.0.1 补充：爱发电 out_trade_no（供 reconcile 查单用）
       out_trade_no: order.afdian_out_trade_no,
       // v3.0.1 补充：爱发电付额 URL（前端跳支付页用）
-      afdian_pay_url: buildProductPayUrl(order.afdian_sku_id, order.id),
+      afdian_pay_url: buildProductPayUrl(order.afdian_plan_id, order.afdian_sku_id, order.id),
       // v3.0.1 补充 reading
       reading: reading ? parseReading(reading.interpretation) : null,
       // v3.0.3 追问用：reading_id（OracleChat 需要）
