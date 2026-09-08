@@ -121,10 +121,13 @@ export function buildSubscriptionPayUrl(planId, customOrderId) {
 /**
   * 生成商品方案支付 URL（直接进收银台，不需要过产品页 auth）
   * 使用 /order/create 端点，未登录用户也能看到价格和支付按钮
+  * @param {string} skuId - 爱发电商品页 ID（/item/xxx 中的 UUID，即 AFDIAN_SKU_*）
+  * @param {string} customOrderId - 自定义订单号（用于 webhook 回调时关联业务订单）
   */
 export function buildProductPayUrl(skuId, customOrderId) {
   if (!skuId) return null;
-  return `https://ifdian.net/order/create?plan_id=${skuId}&product_type=1&custom_order_id=${encodeURIComponent(customOrderId)}`;
+  const skuParam = encodeURIComponent(JSON.stringify([{ sku_id: skuId, count: 1 }]));
+  return `https://ifdian.net/order/create?product_type=1&plan_id=${skuId}&sku=${skuParam}&custom_order_id=${encodeURIComponent(customOrderId)}`;
 }
 
 /**
