@@ -18,6 +18,7 @@ import { Button } from '../components/Button';
 import { CardFace } from '../components/CardFace';
 import { ordersApi, authApi } from '../lib/api';
 import { generateShareCard, downloadShareCard } from '../lib/share-card';
+import { cardImageById } from '../lib/cards';
 
 interface Order {
   id: string;
@@ -101,7 +102,7 @@ export default function Reading() {
       id: c.id,
       name: c.name,
       orientation: (c.orientation === 'reversed' ? 'reversed' : 'upright') as 'reversed' | 'upright',
-      imageUrl: `/cards/rider-waite/${c.id}.jpg`,
+      imageUrl: cardImageById(c.id),
     }));
 
     const doGenerate = async () => {

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分享卡设计 v2.0 — Arcana Box</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d0b14;
+    min-height: 100vh;
+    font-family: 'Noto Sans SC', sans-serif;
+    color: #f0eadf;
+    padding: 40px 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #c9a96e;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #a89a82;
+    font-size: 14px;
+    margin-bottom: 48px;
+  }
+  .row {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 56px;
+  }
+  .phone-frame {
+    width: 270px;
+    background: #1a1428;
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px #c9a96e33;
+    flex-shrink: 0;
+  }
+  .phone-label {
+    text-align: center;
+    color: #a89a82;
+    font-size: 12px;
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .card-label {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #c9a96e;
+  }
+
+  /* === 分享卡内边距 === */
+  .share-inner {
+    width: 100%;
+    aspect-ratio: 9/16;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* === 通用组件样式 === */
+  .sh-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, #0d0b14 0%, #1a1428 50%, #0d0b14 100%);
+  }
+  .sh-border {
+    position: absolute; inset: 9px;
+    border: 0.75px solid #c9a96e;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+  /* 四角装饰 */
+  .sh-corner {
+    position: absolute;
+    width: 7px; height: 7px;
+    border-color: #c9a96e;
+    border-style: solid;
+  }
+  .sh-corner-tl { top: 9px; left: 9px; border-width: 1.5px 0 0 1.5px; }
+  .sh-corner-tr { top: 9px; right: 9px; border-width: 1.5px 1.5px 0 0; }
+  .sh-corner-bl { bottom: 9px; left: 9px; border-width: 0 0 1.5px 1.5px; }
+  .sh-corner-br { bottom: 9px; right: 9px; border-width: 0 1.5px 1.5px 0; }
+  .sh-header {
+    position: absolute;
+    top: 22px; left: 0; right: 0;
+    text-align: center;
+  }
+  .sh-brand { color: #c9a96e; font-family: 'Noto Serif SC', serif; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+  .sh-url { color: #a89a82; font-size: 5px; margin-top: 2px; }
+  .sh-divider {
+    position: absolute;
+    height: 0.4px;
+    background: #c9a96e;
+    left: 50%; transform: translateX(-50%);
+    width: 60px;
+  }
+  .sh-footer {
+    position: absolute;
+    bottom: 18px; left: 0; right: 0;
+    text-align: center;
+  }
+  .sh-footer-brand { color: #c9a96e; font-family: 'Noto Serif SC', serif; font-size: 8px; font-weight: 600; }
+  .sh-footer-url { color: #a89a82; font-size: 5px; margin-top: 2px; }
+
+  /* 星点 */
+  .sh-star {
+    position: absolute;
+    border-radius: 50%;
+    background: #c9a96e;
+    opacity: 0.12;
+  }
+
+  /* === 卡片牌图 === */
+  .sh-card {
+    position: absolute;
+    border: 0.6px solid #c9a96e;
+    border-radius: 2px;
+    overflow: hidden;
+    background: #1a1428;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sh-card-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .sh-card-placeholder {
+    width: 100%; height: 100%;
+    background: #1a1428;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sh-card-ph {
+    width: 36%; height: 40%;
+    background: linear-gradient(135deg, #2a1f3d 0%, #1a1428 100%);
+    border: 0.5px solid #c9a96e55;
+    border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    color: #c9a96e;
+    font-size: 8px;
+  }
+  .sh-card-name {
+    position: absolute;
+    bottom: -10px; left: 0; right: 0;
+    text-align: center;
+    color: #c9a96e;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 5px;
+    font-weight: 500;
+  }
+  .sh-card-pos {
+    position: absolute;
+    bottom: -17px; left: 0; right: 0;
+    text-align: center;
+    color: #a89a82;
+    font-size: 3.5px;
+  }
+
+  /* === 文字样式 === */
+  .sh-tag { color: #a89a82; font-family: 'Noto Serif SC', serif; font-style: italic; font-size: 5px; text-align: center; }
+  .sh-question { color: #f0eadf; font-family: 'Noto Serif SC', serif; font-size: 7px; text-align: center; line-height: 1.5; font-weight: 400; }
+  .sh-gold { color: #e6c890; font-family: 'Noto Serif SC', serif; font-style: italic; font-size: 9.5px; text-align: center; line-height: 1.5; font-weight: 600; }
+  .sh-sub { color: #e6c890; font-family: 'Noto Serif SC', serif; font-style: italic; font-size: 6.5px; text-align: center; line-height: 1.5; }
+  .sh-atm { color: #a89a82; font-family: 'Noto Serif SC', serif; font-style: italic; font-size: 5px; text-align: center; line-height: 1.5; }
+  .sh-atm-label { color: #a89a82; font-family: 'Noto Serif SC', serif; font-style: italic; font-size: 5px; text-align: center; }
+
+  /* ─── 模板 1: 金句型（竖排三列牌阵）─── */
+  .t1-q-section { position: absolute; top: 38px; left: 15px; right: 15px; text-align: center; }
+  .t1-gold-section { position: absolute; top: 100px; left: 15px; right: 15px; text-align: center; }
+  .t1-cards-section { position: absolute; top: 195px; left: 15px; right: 15px; display: flex; gap: 4px; justify-content: center; }
+  .t1-atm-section { position: absolute; top: 278px; left: 15px; right: 15px; text-align: center; }
+  .t1-divider1 { top: 94px; width: 40%; }
+  .t1-divider2 { top: 191px; width: 40%; }
+  .t1-divider3 { top: 274px; width: 40%; }
+  .t1-card { width: 72px; height: 112px; }
+  .t1-card-pos { bottom: -14px; }
+
+  /* ─── 模板 2: 问题型（三张横排大卡）─── */
+  .t2-cards-section { position: absolute; top: 40px; left: 15px; right: 15px; display: flex; gap: 6px; justify-content: center; }
+  .t2-q-section { position: absolute; top: 205px; left: 15px; right: 15px; text-align: center; }
+  .t2-divider1 { top: 200px; width: 40%; }
+  .t2-card { width: 78px; height: 140px; }
+  .t2-card-pos { bottom: -14px; }
+
+  /* ─── 模板 3: 单牌聚焦（氛围型）─── */
+  .t3-hero { position: absolute; top: 38px; left: 50%; transform: translateX(-50%); width: 80px; height: 124px; }
+  .t3-card-name-big { position: absolute; top: 170px; left: 0; right: 0; text-align: center; color: #c9a96e; font-family: 'Noto Serif SC', serif; font-size: 11px; font-weight: 700; }
+  .t3-card-sub { position: absolute; top: 182px; left: 0; right: 0; text-align: center; color: #e6c890; font-family: 'Noto Serif SC', serif; font-size: 5.5px; font-style: italic; }
+  .t3-divider1 { top: 193px; width: 50%; }
+  .t3-atm-section { position: absolute; top: 200px; left: 15px; right: 15px; text-align: center; }
+  .t3-gold-section { position: absolute; top: 240px; left: 15px; right: 15px; text-align: center; }
+  .t3-divider2 { top: 290px; width: 40%; }
+  .t3-q-section { position: absolute; top: 297px; left: 15px; right: 15px; text-align: center; }
+
+  .section-title { text-align: center; margin-bottom: 48px; margin-top: 8px; color: #c9a96e; font-family: 'Noto Serif SC', serif; font-size: 14px; }
+
+  /* ─── 底部说明 ─── */
+  .notes {
+    max-width: 700px;
+    margin: 0 auto;
+    background: #1a1428;
+    border-radius: 16px;
+    padding: 28px;
+    border: 0.5px solid #c9a96e33;
+  }
+  .notes h2 { color: #c9a96e; font-family: 'Noto Serif SC', serif; font-size: 16px; margin-bottom: 16px; }
+  .notes ul { list-style: none; padding: 0; }
+  .notes li { color: #a89a82; font-size: 13px; padding: 8px 0; border-bottom: 0.5px solid #ffffff0d; display: flex; gap: 10px; }
+  .notes li:last-child { border: none; }
+  .notes .dot { color: #c9a96e; flex-shrink: 0; }
+  .notes .done { text-decoration: line-through; color: #5a5040; }
+  .notes .fixing { color: #e6c890; }
+</style>
+</head>
+<body>
+
+<h1>✦ 分享卡设计 v2.0 ✦</h1>
+<p class="subtitle">基于 v3.0.4 规则的优化版本 · 解决排版错位 + 牌图不显示问题</p>
+
+<!-- ═══ 模板 1：经典金句型 ═══ -->
+<div class="card-label">模板 1 · 经典金句型（默认，70% 用户）</div>
+<div class="row">
+  <div>
+    <div class="phone-frame">
+      <div class="share-inner">
+        <div class="sh-bg"></div>
+
+        <!-- 散落星点 -->
+        <div class="sh-star" style="width:2px;height:2px;top:12%;left:8%;opacity:0.15"></div>
+        <div class="sh-star" style="width:1.5px;height:1.5px;top:25%;left:85%;opacity:0.1"></div>
+        <div class="sh-star" style="width:2px;height:2px;top:60%;left:15%;opacity:0.08"></div>
+        <div class="sh-star" style="width:1px;height:1px;top:80%;left:75%;opacity:0.12"></div>
+        <div class="sh-star" style="width:1.5px;height:1.5px;top:45%;left:90%;opacity:0.06"></div>
+
+        <div class="sh-border"></div>
+        <div class="sh-corner sh-corner-tl"></div>
+        <div class="sh-corner sh-corner-tr"></div>
+        <div class="sh-corner sh-corner-bl"></div>
+        <div class="sh-corner sh-corner-br"></div>
+
+        <!-- Header -->
+        <div class="sh-header">
+          <div class="sh-brand">塔罗匣 · Arcana Box</div>
+          <div class="sh-url">tarotbox.cn</div>
+        </div>
+        <div class="sh-divider" style="top:44px"></div>
+
+        <!-- 问题区 -->
+        <div class="t1-q-section">
+          <div class="sh-tag" style="margin-bottom:4px">— 你问的 —</div>
+          <div class="sh-question">"他对我到底有没有意思？"</div>
+        </div>
+        <div class="sh-divider t1-divider1"></div>
+
+        <!-- 金句区 -->
+        <div class="t1-gold-section">
+          <div class="sh-tag" style="margin-bottom:4px;font-size:4.5px">✦ &nbsp;金 &nbsp;句 &nbsp; ✦</div>
+          <div class="sh-gold">"你已经有足够的力量<br>不需要向任何人证明"</div>
+          <div class="sh-sub" style="margin-top:3px">— 力量正位 · 你的核心答案</div>
+        </div>
+        <div class="sh-divider t1-divider2"></div>
+
+        <!-- 三牌区 -->
+        <div class="t1-cards-section">
+          <div class="sh-card t1-card" style="top:0;left:0">
+            <div class="sh-card-placeholder">
+              <div class="sh-card-ph">☽</div>
+            </div>
+            <div class="sh-card-name" style="bottom:-11px">月亮</div>
+            <div class="sh-card-pos" style="bottom:-18px">正位</div>
+          </div>
+          <div class="sh-card t1-card" style="top:0;left:calc(50% - 36px)">
+            <div class="sh-card-placeholder">
+              <div class="sh-card-ph">☽</div>
+            </div>
+            <div class="sh-card-name" style="bottom:-11px">隐士</div>
+            <div class="sh-card-pos" style="bottom:-18px">逆位</div>
+          </div>
+          <div class="sh-card t1-card" style="top:0;right:0">
+            <div class="sh-card-placeholder">
+              <div class="sh-card-ph">☽</div>
+            </div>
+            <div class="sh-card-name" style="bottom:-11px">恋人</div>
+            <div class="sh-card-pos" style="bottom:-18px">正位</div>
+          </div>
+        </div>
+
+        <div class="sh-divider t1-divider3"></div>
+
+        <!-- 氛围 -->
+        <div class="t1-atm-section">
+          <div class="sh-atm-label" style="margin-bottom:3px">— 整体氛围 —</div>
+          <div class="sh-atm">温柔而坚定的能量在场<br>你需要先相信自己</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="sh-divider" style="bottom:38px;top:auto;transform:none"></div>
+        <div class="sh-footer">
+          <div class="sh-footer-brand">塔罗匣 Arcana Box</div>
+          <div class="sh-footer-url">tarotbox.cn</div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-label">金句型 · 三列牌阵 · 竖屏适配</p>
+  </div>
+
+  <!-- ═══ 模板 2：问题型 ═══ -->
+  <div>
+    <div class="phone-frame">
+      <div class="share-inner">
+        <div class="sh-bg"></div>
+        <div class="sh-star" style="width:2px;height:2px;top:8%;left:12%;opacity:0.12"></div>
+        <div class="sh-star" style="width:1.5px;height:1.5px;top:50%;left:88%;opacity:0.08"></div>
+        <div class="sh-star" style="width:2px;height:2px;top:75%;left:20%;opacity:0.1"></div>
+        <div class="sh-border"></div>
+        <div class="sh-corner sh-corner-tl"></div>
+        <div class="sh-corner sh-corner-tr"></div>
+        <div class="sh-corner sh-corner-bl"></div>
+        <div class="sh-corner sh-corner-br"></div>
+
+        <!-- Header -->
+        <div class="sh-header">
+          <div class="sh-brand">塔罗匣 · Arcana Box</div>
+          <div class="sh-url">tarotbox.cn</div>
+        </div>
+        <div class="sh-divider" style="top:44px"></div>
+
+        <!-- 三张大牌 -->
+        <div class="t2-cards-section">
+          <div class="sh-card t2-card">
+            <div class="sh-card-placeholder">
+              <div class="sh-card-ph">☽</div>
+            </div>
+            <div class="sh-card-name" style="bottom:-11px;font-size:5.5px">命运之轮</div>
+            <div class="sh-card-pos" style="bottom:-18px;font-size:4px">位置一</div>
+          </div>
+          <div class="sh-card t2-card">
+            <div class="sh-card-placeholder">
+              <div class="sh-card-ph">☽</div>
+            </div>
+            <div class="sh-card-name" style="bottom:-11px;font-size:5.5px">塔</div>
+            <div class="sh-card-pos" style="bottom:-18px;font-size:4px">位置二</div>
+          </div>
+          <div class="sh-card t2-card">
+            <div class="sh-card-placeholder">
+              <div class="sh-card-ph">☽</div>
+            </div>
+            <div class="sh-card-name" style="bottom:-11px;font-size:5.5px">星星</div>
+            <div class="sh-card-pos" style="bottom:-18px;font-size:4px">位置三</div>
+          </div>
+        </div>
+
+        <div class="sh-divider t2-divider1"></div>
+
+        <!-- 问题 -->
+        <div class="t2-q-section">
+          <div class="sh-tag" style="margin-bottom:4px">— 你问的 —</div>
+          <div class="sh-question" style="font-size:8px;font-weight:600">"我们还能复合吗？"</div>
+          <div class="sh-gold" style="font-size:6.5px;margin-top:4px">过去是逆位塔（分得不愉快）<br>现在是世界正位（你已在愈合）</div>
+          <div class="sh-atm" style="margin-top:4px">未来力量正位代表需要主动</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="sh-divider" style="bottom:38px;top:auto;transform:none"></div>
+        <div class="sh-footer">
+          <div class="sh-footer-brand">塔罗匣 Arcana Box</div>
+          <div class="sh-footer-url">tarotbox.cn</div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-label">问题型 · 牌阵在上 · 解读在下</p>
+  </div>
+
+  <!-- ═══ 模板 3：单牌氛围型 ═══ -->
+  <div>
+    <div class="phone-frame">
+      <div class="share-inner">
+        <div class="sh-bg"></div>
+        <div class="sh-star" style="width:3px;height:3px;top:5%;left:50%;opacity:0.18;transform:translateX(-50%)"></div>
+        <div class="sh-star" style="width:1.5px;height:1.5px;top:35%;left:15%;opacity:0.1"></div>
+        <div class="sh-star" style="width:2px;height:2px;top:65%;left:80%;opacity:0.08"></div>
+        <div class="sh-border"></div>
+        <div class="sh-corner sh-corner-tl"></div>
+        <div class="sh-corner sh-corner-tr"></div>
+        <div class="sh-corner sh-corner-bl"></div>
+        <div class="sh-corner sh-corner-br"></div>
+
+        <!-- Header -->
+        <div class="sh-header">
+          <div class="sh-brand">塔罗匣 · Arcana Box</div>
+          <div class="sh-url">tarotbox.cn</div>
+        </div>
+        <div class="sh-divider" style="top:44px"></div>
+
+        <!-- 主牌 + 牌名 -->
+        <div class="sh-card t3-hero">
+          <div class="sh-card-placeholder">
+            <div class="sh-card-ph" style="font-size:14px">✦</div>
+          </div>
+        </div>
+        <div class="t3-card-name-big">死神</div>
+        <div class="t3-card-sub">三张牌阵 · 正位</div>
+        <div class="sh-divider t3-divider1"></div>
+
+        <!-- 氛围 -->
+        <div class="t3-atm-section">
+          <div class="sh-atm-label" style="margin-bottom:3px">— 整体氛围 —</div>
+          <div class="sh-atm" style="font-size:6px">不是终结，是重生。<br>不是 TA 的问题，是你带着旧模式回去。</div>
+        </div>
+
+        <!-- 金句 -->
+        <div class="t3-gold-section">
+          <div class="sh-gold" style="font-size:7.5px">"放下，才能真正拥有"</div>
+        </div>
+        <div class="sh-divider t3-divider2"></div>
+
+        <!-- 问题 -->
+        <div class="t3-q-section">
+          <div class="sh-tag" style="margin-bottom:3px">— 你问的 —</div>
+          <div class="sh-question" style="font-size:6.5px">"我该不该和 TA 复合？"</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="sh-divider" style="bottom:38px;top:auto;transform:none"></div>
+        <div class="sh-footer">
+          <div class="sh-footer-brand">塔罗匣 Arcana Box</div>
+          <div class="sh-footer-url">tarotbox.cn</div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-label">氛围型 · 单牌聚焦 · 诗意留白</p>
+  </div>
+</div>
+
+<!-- ═══ 改进说明 ═══ -->
+<div class="notes">
+  <h2>✦ 本次修复清单</h2>
+  <ul>
+    <li><span class="dot">▸</span><span class="fixing">已修复：牌图路径错误</span> — `Reading.tsx` 原来用 `${c.id}.jpg` 直接拼接，导致 DB 存 `ar21` 而文件是 `21_World.jpg`，永远 404。现在统一用 `cardImageById()` 映射函数。</li>
+    <li><span class="dot">▸</span><span class="fixing">已修复：loadImage 超时逻辑</span> — 原代码 `img.onload || setTimeout(...)` 永远不会触发（onload 是函数，|| 不走 setTimeout）。现在正确分离超时保护。</li>
+    <li><span class="dot">▸</span><span class="fixing">已修复：后端 PM2 cwd</span> — ecosystem.config.js 加了 `cwd` + `DB_PATH`，数据库不再指向空文件。</li>
+    <li><span class="dot">▸</span><span class="doing">设计改进：牌阵区固定高度</span> — 牌阵统一锁定尺寸，内容不再越界；牌名/正逆位标签明确标注。</li>
+    <li><span class="dot">▸</span><span class="doing">设计改进：字重层级</span> — 问题用 600 字重，金句用 600 italic，答案/氛围用 400 italic，层次分明。</li>
+    <li><span class="dot">▸</span><span class="doing">设计改进：星点装饰</span> — 散落金色星点增添神秘感，不干扰内容阅读。</li>
+    <li><span class="dot">▸</span><span>待确认：具体排版错位位置</span> — 麻烦描述一下截图里哪个区域错位了？我来精准修复。</li>
+    <li><span class="dot">▸</span><span>待确认：Yes/No 报错场景</span> — "生成解读后报错"，具体是哪个报错弹窗？截图或文字都行。</li>
+    <li><span class="dot">▸</span><span>待确认：追问报错场景</span> — "追问错误"，具体是点哪个按钮之后报什么错？</li>
+  </ul>
+</div>
+
+</body>
+</html>

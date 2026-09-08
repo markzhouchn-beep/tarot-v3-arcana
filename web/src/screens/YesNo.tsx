@@ -234,7 +234,7 @@ export default function YesNo() {
           result={result}
           onAgain={handleReset}
           onClose={() => navigate('/')}
-          onUnlock={() => navigate(`/ask/three?question=${encodeURIComponent(result.question)}&from=yesno`)}
+          onUnlock={() => navigate(`/ask/general-3?question=${encodeURIComponent(result.question)}&from=yesno`)}
         />
       )}
     </Layout>

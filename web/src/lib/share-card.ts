@@ -68,11 +68,17 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     if (!url) return resolve(null);
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     // 超时保护：3s 内没加载完就放弃
-    img.onload || (setTimeout(() => resolve(null), 3000));
+    const timer = setTimeout(() => resolve(null), 3000);
+    img.onload = async () => {
+      clearTimeout(timer);
+      // 等待图片 decode 完成（确保 Canvas drawImage 能画出来）
+      if (img.decode) {
+        try { await img.decode(); } catch { /* decode 失败也继续，图片可能还能画 */ }
+      }
+      resolve(img);
+    };
     img.src = url;
   });
 }
