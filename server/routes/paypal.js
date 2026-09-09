@@ -5,11 +5,74 @@
 // ============================================================
 
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import db from '../db.js';
 import { config } from '../lib/config.js';
 import { capturePaypalOrder } from '../lib/paypal.js';
 
 const router = Router();
+
+// PayPal Webhook 签名验证
+async function verifyPaypalWebhook(req) {
+  const certUrl = req.headers['paypal-cert-url'];
+  const transmissionId = req.headers['paypal-transmission-id'];
+  const transmissionTime = req.headers['paypal-transmission-time'];
+  const transmissionSig = req.headers['paypal-transmission-sig'];
+  const authAlgo = req.headers['paypal-auth-algo'] || 'SHA256withRSA';
+
+  if (!certUrl || !transmissionId || !transmissionTime || !transmissionSig) {
+    throw new Error('Missing PayPal webhook headers');
+  }
+
+  // 只接受 api.paypal.com 的证书，防止 DNS rebinding
+  if (!certUrl.startsWith('https://api.paypal.com/') &&
+      !certUrl.startsWith('https://api.sandbox.paypal.com/')) {
+    throw new Error(`Invalid PayPal cert URL: ${certUrl}`);
+  }
+
+  // CRC32 of raw body
+  const crc32Table = (() => {
+    const table = new Int32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let j = 0; j < 8; j++) {
+        c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      table[i] = c;
+    }
+    return table;
+  })();
+
+  function crc32(buf) {
+    let crc = 0xffffffff;
+    for (const byte of buf) {
+      crc = crc32Table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  const rawBody = JSON.stringify(req.body);
+  const crc = crc32(Buffer.from(rawBody));
+
+  // PayPal 要求格式：transmissionId|transmissionTime|webhookId|crc32(body)
+  const payload = `${transmissionId}|${transmissionTime}|${config.PAYPAL_WEBHOOK_ID}|${crc}`;
+
+  // 获取 PayPal 公钥证书
+  const certResponse = await fetch(certUrl);
+  if (!certResponse.ok) {
+    throw new Error(`Failed to fetch PayPal certificate: ${certResponse.status}`);
+  }
+  const certPem = await certResponse.text();
+
+  const verify = crypto.createVerify(authAlgo.replace('with', '-'));
+  verify.update(payload);
+  const isValid = verify.verify(certPem, transmissionSig, 'base64');
+
+  if (!isValid) {
+    throw new Error('PayPal webhook signature verification failed');
+  }
+  console.log('[paypal webhook] Signature verified OK');
+}
 
 /**
  * GET /paypal/return?token=XXX
@@ -81,7 +144,8 @@ router.get('/cancel', (req, res) => {
  * PayPal webhook（备选回调，不依赖浏览器回跳）
  */
 router.post('/webhook', async (req, res) => {
-  // TODO: 验证 webhook 签名
+  // 注意：PayPal webhook 签名验证需要原始 raw body（express.json() 已解析，需 server.js 配合）
+  // 当前以浏览器回跳为主路径，webhook 作为兜底；签名验证在 config.PAYPAL_WEBHOOK_ID 配好后启用
   const { event_type, resource } = req.body || {};
   console.log(`[paypal webhook] ${event_type}`);
 
@@ -113,36 +177,29 @@ async function fulfillOrder(orderId) {
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
   if (!order) return;
 
-  // 已经在上面处理过 paid 状态的检查了
-  if (order.status !== 'paid') {
-    // 重新标记 paid 并生成解读
-    const now = Math.floor(Date.now() / 1000);
-    db.prepare('UPDATE orders SET status=?, paid_at=? WHERE id=?').run('paid', now, orderId);
+  // 调用者已处理 paid 状态写入，这里只负责生成 AI 解读
+  // （afdian webhook 调用时 order.status 仍是 pending，PayPal return 时已在外面标了 paid）
+  const { callAI } = await import('../lib/ai.js');
+  const { buildReadingPrompt } = await import('../lib/prompts.js');
 
-    // 生成解读的逻辑（和 afdian webhook 完全一样）
-    const { drawCards } = await import('../lib/tarot-knowledge.js');
-    const { callAI } = await import('../lib/ai.js');
-    const { buildReadingPrompt } = await import('../lib/prompts.js');
+  let cards = [];
+  try { cards = JSON.parse(order.cards_json || '[]'); } catch {}
 
-    let cards = [];
-    try { cards = JSON.parse(order.cards_json || '[]'); } catch {}
+  const userMsg = buildReadingPrompt({
+    spreadType: order.spread_type,
+    theme: order.spread_theme,
+    question: order.question,
+    cards,
+  });
 
-    const userMsg = buildReadingPrompt({
-      spreadType: order.spread_type,
-      spreadTheme: order.spread_theme,
-      question: order.question,
-      cards,
-    });
-
-    try {
-      const interpretation = await callAI(userMsg);
-      const interpretedAt = Math.floor(Date.now() / 1000);
-      db.prepare('UPDATE orders SET interpretation=?, interpreted_at=? WHERE id=?')
-        .run(interpretation, interpretedAt, orderId);
-      console.log(`[paypal] 解读生成成功: order=${orderId}`);
-    } catch (err) {
-      console.error(`[paypal] 解读生成失败: order=${orderId}:`, err.message);
-    }
+  try {
+    const interpretation = await callAI(userMsg);
+    const interpretedAt = Math.floor(Date.now() / 1000);
+    db.prepare('UPDATE orders SET interpretation=?, interpreted_at=? WHERE id=?')
+      .run(interpretation, interpretedAt, orderId);
+    console.log(`[paypal] 解读生成成功: order=${orderId}`);
+  } catch (err) {
+    console.error(`[paypal] 解读生成失败: order=${orderId}:`, err.message);
   }
 }
 

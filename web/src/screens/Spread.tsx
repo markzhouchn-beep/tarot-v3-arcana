@@ -73,9 +73,13 @@ export default function Spread() {
     }
   }, [id]);
 
-  // PD v0.8：「我已支付」→ 调 reconcile（调爱发电 query-order 核实）
+  // PayPal：reconcile 无效（只查爱发电）；改为提示用户等待回跳
   const handleReconcile = async () => {
     if (!order) return;
+    if (order.payment_method === 'paypal') {
+      setError('PayPal 付款后页面会自动跳转，如未跳转请稍后刷新本页面');
+      return;
+    }
     setProcessing(true);
     setError(null);
     try {
