@@ -18,7 +18,8 @@ interface Order {
   question: string;
   spread_type: string;
   spread_name?: string;
-  afdian_pay_url?: string;
+  pay_url?: string;
+  payment_method?: string;
   cards: Array<{
     id: string;
     name: string;
@@ -50,6 +51,19 @@ export default function Spread() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [id]);
 
+  // PayPal 回跳后刷新订单状态
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from') === 'paypal') {
+      // 清理 URL，避免刷新后又触发
+      window.history.replaceState({}, '', window.location.pathname);
+      // 重新拉订单
+      ordersApi.get(id!)
+        .then(o => { setOrder(o); setLoading(false); })
+        .catch(() => {});
+    }
+  }, [id]);
+
   // PD v0.8：「我已支付」→ 调 reconcile（调爱发电 query-order 核实）
   const handleReconcile = async () => {
     if (!order) return;
@@ -73,15 +87,15 @@ export default function Spread() {
     }
   };
 
-  // v3.0.2：直接跳爱发电收银台，不需要弹窗
+  // 跳 PayPal 收银台
   const handlePay = () => {
     if (!order) return;
-    const payUrl = (order as any).afdian_pay_url;
+    const payUrl = (order as any).pay_url;
     if (!payUrl) {
       setError('支付链接未生成，请刷新页面重试');
       return;
     }
-    // 直接跳转，支付完成后用户回来页面自动刷新轮询
+    // 直接跳转，PayPal 付款后会回跳 /paypal/return，然后 redirect 回这里
     window.location.href = payUrl;
   };
 
@@ -280,23 +294,10 @@ function Paywall({
         <li>· 解读永久保存（会员后台可查）</li>
       </ul>
 
-      {/* 主按钮：跳爱发电 */}
+      {/* 主按钮：跳 PayPal */}
       <Button onClick={onPay} variant="primary" size="lg" fullWidth loading={processing}>
-        💎 立即解锁 · 跳转爱发电
+        💎 立即解锁 · 跳转 PayPal
       </Button>
-
-      {/* 轮询状态 */}
-      {polling && (
-        <div className="panel p-md bg-primary/10 border-primary/30 mt-md text-center animate-pulse">
-          <div className="caps text-primary text-xs mb-xs">✦ 等待支付确认中</div>
-          <div className="caps text-2xs text-fg-secondary">
-            已在爱发电打开 · 后台每 5s 查一次订单状态（{pollCount}/72）
-          </div>
-          <div className="text-2xs text-fg-faint mt-xs">
-            支付完成后会自动跳到解读页 · 无需手动刷新
-          </div>
-        </div>
-      )}
 
       {/* 错误提示 */}
       {error && (
@@ -305,22 +306,8 @@ function Paywall({
         </div>
       )}
 
-      {/* 兜底：手动 reconcile */}
-      <div className="text-center mt-md">
-        <button
-          onClick={onReconcile}
-          disabled={processing || polling}
-          className="text-xs text-fg-faint hover:text-primary transition-colors underline disabled:opacity-50"
-        >
-          我已支付 · 重新核实
-        </button>
-        <div className="caps text-2xs text-fg-faint mt-xs">
-          点击后系统会向爱发电查询订单状态
-        </div>
-      </div>
-
       <div className="caps text-2xs text-fg-faint text-center mt-md">
-        安全支付 · 爱发电提供
+        安全支付 · 由 PayPal 提供保障
       </div>
     </div>
   );

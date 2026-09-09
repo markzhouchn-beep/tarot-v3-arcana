@@ -92,18 +92,18 @@ export default function Checkout() {
       )}
 
       <Button onClick={handleBuy} variant="primary" size="lg" fullWidth loading={submitting}>
-        💎 立即购买 · 跳转爱发电
+        💎 立即购买 · 跳转 PayPal
       </Button>
 
       {/* 信任标识 */}
       <div className="mt-md flex items-center justify-center gap-sm text-xxs text-fg-faint">
         <span className="inline-flex items-center gap-xs">
           <span className="text-secondary">🛡️</span>
-          <span>由爱发电 afdian.net 担保支付</span>
+          <span>由 PayPal 提供安全支付保障</span>
         </span>
       </div>
       <div className="caps text-2xs text-fg-faint text-center mt-xs">
-        支持微信 · 支付宝 · 支付完成自动返回
+        支持信用卡 · PayPal 余额 · 支付完成自动返回
       </div>
     </Layout>
   );

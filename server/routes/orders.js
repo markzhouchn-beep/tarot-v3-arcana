@@ -9,7 +9,8 @@ import db from '../db.js';
 import { config } from '../lib/config.js';
 import { optionalAuth, requireAuth } from '../middleware/auth.js';
 import { trackEvent } from '../lib/events.js';
-import { buildProductPayUrl, queryOrder } from '../lib/afdian.js';
+import { queryOrder } from '../lib/afdian.js';
+import { createPaypalOrder } from '../lib/paypal.js';
 import { drawCards } from '../lib/tarot-knowledge.js';
 import { callAI } from '../lib/ai.js';
 import { buildReadingPrompt, READING_SYSTEM_PROMPT } from '../lib/prompts.js';
@@ -23,7 +24,7 @@ const router = Router();
  */
 router.post('/create', optionalAuth, (req, res) => {
   try {
-    const { spread_type, spread_theme, question, tier = 'classic', device_id } = req.body || {};
+    const { spread_type, spread_theme, question, tier = 'classic', device_id, payment_method = 'paypal' } = req.body || {};
 
     // 价格映射（统一 key：'single' / 'three' / 'ten'，front 贺 v2.0 lite/classic/deep 都接受）
     const PRICE_MAP = {
@@ -107,9 +108,11 @@ router.post('/create', optionalAuth, (req, res) => {
     db.prepare(`
       INSERT INTO orders (
         id, user_id, tier, spread_type, spread_theme, question, cards_json,
-        amount, status, paid_amount, afdian_out_trade_no, afdian_plan_id, afdian_sku_id, is_test, device_id, created_at, updated_at, paid_at
+        amount, status, paid_amount, payment_method,
+        afdian_out_trade_no, afdian_plan_id, afdian_sku_id, paypal_order_id,
+        is_test, device_id, created_at, updated_at, paid_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       orderId,
       req.user?.id || null,
@@ -121,9 +124,11 @@ router.post('/create', optionalAuth, (req, res) => {
       finalAmount,
       initialStatus,
       initialPaidAmount,
+      payment_method,
       outTradeNo,
       planId,
       skuId,
+      null, // paypal_order_id（后面更新）
       isTest,
       device_id || null,
       now,
@@ -164,7 +169,23 @@ router.post('/create', optionalAuth, (req, res) => {
     }
 
     // 支付 URL：会员/首单免费时不需要
-    const payUrl = (isMember || isFreeFirst) ? null : (planId && skuId ? buildProductPayUrl(planId, skuId, orderId) : null);
+    let payUrl = null;
+    if (!isMember && !isFreeFirst) {
+      if (payment_method === 'paypal' && config.PAYPAL_CLIENT_ID && amount > 0) {
+        try {
+          // 金额转 USD（固定汇率 7.2）
+          const usdAmount = +(amount / 7.2).toFixed(2);
+          const description = `Arcana AI · ${tier === 'single' ? '单张牌阵' : tier === 'three' ? '三张牌阵' : '十张牌阵'} (¥${amount})`;
+          const { paypalOrderId, approvalUrl } = await createPaypalOrder(orderId, usdAmount, description);
+          // 保存 paypal_order_id 到数据库
+          db.prepare('UPDATE orders SET paypal_order_id=? WHERE id=?').run(paypalOrderId, orderId);
+          payUrl = approvalUrl;
+          console.log(`[orders] PayPal 订单创建: order=${orderId}, paypal=${paypalOrderId}, amount=$${usdAmount}`);
+        } catch (err) {
+          console.error('[orders] PayPal 创建失败:', err.message);
+        }
+      }
+    }
 
     res.json({
       ok: true,
@@ -172,7 +193,8 @@ router.post('/create', optionalAuth, (req, res) => {
       outTradeNo,
       amount: finalAmount,
       originalAmount: amount,
-      afdianPayUrl: payUrl,
+      payUrl,
+      paymentMethod: payment_method,
       isTest,
       isMember,
       isFreeFirst,
@@ -213,10 +235,8 @@ router.get('/:id', (req, res) => {
       question: order.question,
       cards: order.cards_json ? JSON.parse(order.cards_json) : [],
       spread_type: order.spread_type,
-      // v3.0.1 补充：爱发电 out_trade_no（供 reconcile 查单用）
-      out_trade_no: order.afdian_out_trade_no,
-      // v3.0.1 补充：爱发电付额 URL（前端跳支付页用）
-      afdian_pay_url: buildProductPayUrl(order.afdian_plan_id, order.afdian_sku_id, order.id),
+      payment_method: order.payment_method,
+      paypal_order_id: order.paypal_order_id || null,
       // v3.0.1 补充 reading
       reading: reading ? parseReading(reading.interpretation) : null,
       // v3.0.3 追问用：reading_id（OracleChat 需要）

@@ -39,9 +39,14 @@ export const config = {
   MINIMAX_BASE_URL: str('MINIMAX_BASE_URL', 'https://api.minimaxi.com'),
   MINIMAX_MODEL: str('MINIMAX_MODEL', 'MiniMax-M2.7'),
 
-  // 爱发电
+  // 爱发电（已废弃，保留字段名防报错）
   AFDIAN_USER_ID: str('AFDIAN_USER_ID', ''),
   AFDIAN_TOKEN: str('AFDIAN_TOKEN', ''),
+
+  // PayPal
+  PAYPAL_CLIENT_ID: str('PAYPAL_CLIENT_ID', ''),
+  PAYPAL_CLIENT_SECRET: str('PAYPAL_CLIENT_SECRET', ''),
+  PAYPAL_MODE: str('PAYPAL_MODE', 'live'), // live | sandbox
 
   // 订阅 plan_id
   AFDIAN_PLAN_SILVER_MONTHLY: str('AFDIAN_PLAN_SILVER_MONTHLY', ''),
