@@ -173,10 +173,8 @@ router.post('/create', optionalAuth, async (req, res) => {
     if (!isMember && !isFreeFirst) {
       if (payment_method === 'paypal' && config.PAYPAL_CLIENT_ID && amount > 0) {
         try {
-          // 金额转 USD（固定汇率 7.2）
-          const usdAmount = +(amount / 7.2).toFixed(2);
           const description = `Arcana AI · ${tier === 'single' ? '单张牌阵' : tier === 'three' ? '三张牌阵' : '十张牌阵'} (¥${amount})`;
-          const { paypalOrderId, approvalUrl } = await createPaypalOrder(orderId, usdAmount, description);
+          const { paypalOrderId, approvalUrl } = await createPaypalOrder(orderId, amount, description);
           // 保存 paypal_order_id 到数据库
           db.prepare('UPDATE orders SET paypal_order_id=? WHERE id=?').run(paypalOrderId, orderId);
           payUrl = approvalUrl;

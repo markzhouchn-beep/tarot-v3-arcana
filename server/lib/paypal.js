@@ -87,7 +87,7 @@ export async function createPaypalOrder(orderId, amount, description) {
         reference_id: orderId, // 用于 webhook 识别
         description,
         amount: {
-          currency_code: 'USD',
+          currency_code: 'CNY',
           value: amount.toFixed(2),
         },
       },
