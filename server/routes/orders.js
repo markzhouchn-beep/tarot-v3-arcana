@@ -13,6 +13,7 @@ import { queryOrder } from '../lib/afdian.js';
 import { createPaypalOrder } from '../lib/paypal.js';
 import { drawCards } from '../lib/tarot-knowledge.js';
 import { callAI } from '../lib/ai.js';
+import { detectGeo, EXCHANGE_RATES } from '../lib/geo.js';
 import { buildReadingPrompt, READING_SYSTEM_PROMPT } from '../lib/prompts.js';
 import { grantFirstPaidRewards, checkAndGrantMilestoneRewards, grantFirstPaidRewardForOrder } from '../lib/invite.js';
 
@@ -173,12 +174,19 @@ router.post('/create', optionalAuth, async (req, res) => {
     if (!isMember && !isFreeFirst) {
       if (payment_method === 'paypal' && config.PAYPAL_CLIENT_ID && amount > 0) {
         try {
-          const description = `Arcana AI · ${tier === 'single' ? '单张牌阵' : tier === 'three' ? '三张牌阵' : '十张牌阵'} (¥${amount})`;
-          const { paypalOrderId, approvalUrl } = await createPaypalOrder(orderId, amount, description);
-          // 保存 paypal_order_id 到数据库
+          // 根据用户 IP 自动检测货币
+          const geo = await detectGeo(req);
+          const currency = geo.currency;
+          const rate = EXCHANGE_RATES[currency] || 1;
+          // 金额转对应货币（固定汇率）
+          const convertedAmount = +(amount * rate).toFixed(2);
+          const symbol = currency === 'CNY' ? '¥' : currency === 'TWD' ? 'NT$' : currency === 'HKD' ? 'HK$' : '$';
+          const tierName = tier === 'single' ? '单张牌阵' : tier === 'three' ? '三张牌阵' : '十张牌阵';
+          const description = `Arcana AI · ${tierName} (${symbol}${convertedAmount})`;
+          const { paypalOrderId, approvalUrl } = await createPaypalOrder(orderId, convertedAmount, currency, description);
           db.prepare('UPDATE orders SET paypal_order_id=? WHERE id=?').run(paypalOrderId, orderId);
           payUrl = approvalUrl;
-          console.log(`[orders] PayPal 订单创建: order=${orderId}, paypal=${paypalOrderId}, amount=$${usdAmount}`);
+          console.log(`[orders] PayPal 订单: order=${orderId}, country=${geo.country}, currency=${currency}, amount=${symbol}${convertedAmount}`);
         } catch (err) {
           console.error('[orders] PayPal 创建失败:', err.message);
         }

@@ -75,11 +75,12 @@ async function paypalFetch(path, options = {}) {
 /**
  * 创建 PayPal 订单
  * @param {string} orderId     - 我们系统的订单 ID（作为 reference_id）
- * @param {number} amount      - 金额（美元）
+ * @param {number} amount      - 金额
+ * @param {string} currency    - 货币代码 CNY/TWD/HKD/USD
  * @param {string} description - 描述
  * @returns {Promise<{paypalOrderId: string, approvalUrl: string}>}
  */
-export async function createPaypalOrder(orderId, amount, description) {
+export async function createPaypalOrder(orderId, amount, currency, description) {
   const payload = {
     intent: 'CAPTURE',
     purchase_units: [
@@ -87,7 +88,7 @@ export async function createPaypalOrder(orderId, amount, description) {
         reference_id: orderId, // 用于 webhook 识别
         description,
         amount: {
-          currency_code: 'CNY',
+          currency_code: currency,
           value: amount.toFixed(2),
         },
       },
@@ -118,7 +119,7 @@ export async function createPaypalOrder(orderId, amount, description) {
     throw new Error(`No approval link in PayPal response: ${JSON.stringify(data)}`);
   }
 
-  console.log(`[paypal] Order created: paypal_id=${data.id}, amount=$${amount}, reference=${orderId}`);
+  console.log(`[paypal] Order created: paypal_id=${data.id}, currency=${currency}, amount=${amount}, reference=${orderId}`);
 
   return {
     paypalOrderId: data.id,

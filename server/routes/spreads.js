@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { optionalAuth } from '../middleware/auth.js';
+import { currencyForCountry, EXCHANGE_RATES, CURRENCY_SYMBOL } from '../lib/geo.js';
 
 const router = Router();
 
@@ -46,32 +47,53 @@ const TIER_RANK = { guest: 0, registered: 1, silver: 2, gold: 3 };
 /**
  * GET /api/spreads
  * 列出所有牌阵（含权限闸门）
+ * Query: country=CN|TW|HK|US（前端传入，用于多货币展示）
  */
 router.get('/', optionalAuth, (req, res) => {
   try {
     const userTier = req.user?.tier || 'guest';
     const userRank = TIER_RANK[userTier];
+    const country = req.query.country || 'CN';
+    const currency = currencyForCountry(country);
+    const rate = EXCHANGE_RATES[currency] || 1;
+    const symbol = CURRENCY_SYMBOL[currency] || '¥';
+
+    // 有 price 字段的才转换
+    const convertPrice = (info) => {
+      if (info.price == null) return {};
+      const converted = +(info.price * rate).toFixed(2);
+      const originalConverted = info.original_price ? +(info.original_price * rate).toFixed(2) : null;
+      return {
+        price: converted,
+        price_cny: info.price,
+        original_price: originalConverted,
+        original_price_cny: info.original_price || null,
+        currency,
+        currency_symbol: symbol,
+      };
+    };
 
     const spreads = Object.entries(SPREADS).map(([id, info]) => {
       const requiredRank = TIER_RANK[info.tier_required] || 0;
       const accessible = userRank >= requiredRank;
-      // v3.0.1 修复：访客可以进入 registered tier 牌阵（Ask 页会被 requireAuth 拦截）
-      // 只有 silver/gold 高级牌阵需要预览锁
       const isHighTier = info.tier_required === 'silver' || info.tier_required === 'gold';
-      const previewable = true;
-      // 只有 high tier 且访客没权限时才真正锁住
       const locked = !accessible && isHighTier;
 
       return {
         id,
-        ...info,
+        name: info.name,
+        theme: info.theme,
+        cards: info.cards,
+        tier_required: info.tier_required,
+        positions: info.positions,
+        free_first: info.free_first,
+        ...convertPrice(info),
         accessible,
-        previewable,
         locked,
       };
     });
 
-    res.json({ spreads });
+    res.json({ spreads, currency, currency_symbol: symbol });
   } catch (err) {
     console.error('[spreads] error:', err);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });

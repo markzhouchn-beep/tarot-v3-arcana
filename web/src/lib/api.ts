@@ -5,6 +5,30 @@
 
 const BASE = '/api';
 
+// ============================================================
+// 地理检测（IP 识别，用户所在地区）
+// ============================================================
+let _cachedCountry: string | null = null;
+
+export async function detectCountry(): Promise<string> {
+  if (_cachedCountry) return _cachedCountry;
+  try {
+    const res = await fetch('https://ipapi.co/json/', {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // ipapi.co 返回 country_code 如 'CN', 'TW', 'HK'
+      _cachedCountry = data.country_code || 'CN';
+    } else {
+      _cachedCountry = 'CN';
+    }
+  } catch {
+    _cachedCountry = 'CN';
+  }
+  return _cachedCountry as string;
+}
+
 async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   // 关键修复：先合并 headers，后展开 options 但不许 options.headers 覆盖
   // （在生产 bundle 中 ...options 会覆盖前面的 headers 对象）
@@ -44,7 +68,7 @@ export const healthApi = {
 };
 
 export const spreadsApi = {
-  list: () => request('/spreads'),
+  list: (country?: string) => request(`/spreads${country ? `?country=${country}` : ''}`),
   get: (id: string) => request(`/spreads/${id}`),
 };
 

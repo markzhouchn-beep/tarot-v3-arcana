@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { PreviewLock } from '../components/PreviewLock';
-import { spreadsApi, authApi } from '../lib/api';
+import { spreadsApi, authApi, detectCountry } from '../lib/api';
 import { setMeta, setOg, setLink } from '../lib/seo';
 
 interface Spread {
@@ -49,14 +49,18 @@ export default function Spreads() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([
-      spreadsApi.list().then(d => d.spreads).catch(() => []),
+      detectCountry().then(country => spreadsApi.list(country).then(d => d.spreads).catch(() => [])),
       authApi.me().then(d => d.user).catch(() => null),
     ]).then(([s, u]) => {
-      setSpreads(s);
-      setUser(u);
-      setLoading(false);
+      if (!cancelled) {
+        setSpreads(s);
+        setUser(u);
+        setLoading(false);
+      }
     });
+    return () => { cancelled = true; };
   }, []);
 
   // SEO: 注入长尾关键词（牌阵选择页 → 感情/事业/凯尔特/Yes-No/每日运势）
