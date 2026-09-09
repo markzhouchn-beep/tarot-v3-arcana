@@ -22,7 +22,7 @@ const router = Router();
  * POST /api/orders/create
  * 创建单次订单（首单免费 / 付费）
  */
-router.post('/create', optionalAuth, (req, res) => {
+router.post('/create', optionalAuth, async (req, res) => {
   try {
     const { spread_type, spread_theme, question, tier = 'classic', device_id, payment_method = 'paypal' } = req.body || {};
 

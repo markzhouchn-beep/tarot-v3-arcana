@@ -57,7 +57,10 @@ export default function Checkout() {
         tier: product.id,
         device_id: getDeviceId(),
       });
-      // 跳 spread 等待解读，后端返回的 afdian_pay_url 会被 Spread 读取并跳转
+      // payUrl 中转：创建时存 sessionStorage，Spread 页面读取（payUrl 不存数据库）
+      if (result.payUrl) {
+        sessionStorage.setItem(`payUrl_${result.orderId}`, result.payUrl);
+      }
       navigate(`/spread/${result.orderId}`);
     } catch (err: any) {
       setError(err.message);

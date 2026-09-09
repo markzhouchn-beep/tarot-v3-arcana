@@ -18,7 +18,7 @@ interface Order {
   question: string;
   spread_type: string;
   spread_name?: string;
-  pay_url?: string;
+  payUrl?: string;
   payment_method?: string;
   cards: Array<{
     id: string;
@@ -46,7 +46,16 @@ export default function Spread() {
   useEffect(() => {
     if (!id) return;
     ordersApi.get(id)
-      .then(o => { setOrder(o); setLoading(false); })
+      .then(o => {
+        // payUrl 从 sessionStorage 中转回来（创建时不存数据库）
+        const storedPayUrl = sessionStorage.getItem(`payUrl_${id}`);
+        if (storedPayUrl) {
+          o.payUrl = storedPayUrl;
+          sessionStorage.removeItem(`payUrl_${id}`);
+        }
+        setOrder(o);
+        setLoading(false);
+      })
       .catch(err => { setError(err.message); setLoading(false); });
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [id]);
@@ -90,7 +99,7 @@ export default function Spread() {
   // 跳 PayPal 收银台
   const handlePay = () => {
     if (!order) return;
-    const payUrl = (order as any).pay_url;
+    const payUrl = order.payUrl;
     if (!payUrl) {
       setError('支付链接未生成，请刷新页面重试');
       return;

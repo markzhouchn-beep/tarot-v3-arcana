@@ -91,6 +91,10 @@ export default function Ask() {
         tier,
         device_id: getDeviceId(),
       });
+      // payUrl 中转：创建时存 sessionStorage，Spread 页面读取
+      if (result.payUrl) {
+        sessionStorage.setItem(`payUrl_${result.orderId}`, result.payUrl);
+      }
       navigate(`/draw/${result.orderId}`);
     } catch (err: any) {
       setError(err.message);
