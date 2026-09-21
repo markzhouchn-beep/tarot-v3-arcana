@@ -73,7 +73,7 @@ export default function Spread() {
     }
   }, [id]);
 
-  // PayPal：reconcile 无效（只查爱发电）；改为提示用户等待回跳
+  // PayPal/Alipay：reconcile 无效（只查爱发电）；改为提示用户等待回跳
   const handleReconcile = async () => {
     if (!order) return;
     if (order.payment_method === 'paypal') {
@@ -83,13 +83,29 @@ export default function Spread() {
     setProcessing(true);
     setError(null);
     try {
+      // 支付宝：用 /api/alipay/query 主动查询
+      if (order.payment_method === 'alipay') {
+        const res = await ordersApi.reconcileAlipay(order.id);
+        if (res.status === 'paid' || res.ok) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setPolling(false);
+          navigate(`/reading/${order.id}`);
+        } else if (res.status === 'cancelled') {
+          setError('订单已关闭，如需继续请重新下单');
+        } else {
+          setError('支付宝尚未查到该订单，请确认支付状态后重试');
+        }
+        setProcessing(false);
+        return;
+      }
+      // 爱发电（兜底）
       const res = await ordersApi.reconcile(order.id);
       if (res.status === 'paid' || res.already || res.status === 'interpreted') {
         if (pollRef.current) clearInterval(pollRef.current);
         setPolling(false);
         navigate(`/reading/${order.id}`);
       } else if (res.status === 'still_pending') {
-        setError('爱发电未查询到该订单，请确认支付状态后重试');
+        setError('未查询到该订单，请确认支付状态后重试');
       } else {
         setError(res.message || '核实失败，请稍候重试');
       }
@@ -216,6 +232,7 @@ export default function Spread() {
         <Paywall
           orderId={order.id}
           amount={order.amount}
+          paymentMethod={order.payment_method || 'paypal'}
           onPay={handlePay}
           onReconcile={handleReconcile}
           processing={processing}
@@ -269,6 +286,7 @@ function CardWithPosition({
 function Paywall({
   orderId,
   amount,
+  paymentMethod,
   onPay,
   onReconcile,
   processing,
@@ -278,6 +296,7 @@ function Paywall({
 }: {
   orderId: string;
   amount: number;
+  paymentMethod: string;
   onPay: () => void;
   onReconcile: () => void;
   processing: boolean;
@@ -285,6 +304,8 @@ function Paywall({
   pollCount: number;
   error: string | null;
 }) {
+  const isAlipay = paymentMethod === 'alipay';
+
   return (
     <div className="panel p-lg border-primary/40 bg-bg-occult mt-xl">
       <div className="text-center mb-md">
@@ -307,9 +328,9 @@ function Paywall({
         <li>· 解读永久保存（会员后台可查）</li>
       </ul>
 
-      {/* 主按钮：跳 PayPal */}
+      {/* 主按钮：根据支付方式显示 */}
       <Button onClick={onPay} variant="primary" size="lg" fullWidth loading={processing}>
-        💎 立即解锁 · 跳转 PayPal
+        {isAlipay ? '🅿️ 立即解锁 · 跳转支付宝' : '💎 立即解锁 · 跳转 PayPal'}
       </Button>
 
       {/* 错误提示 */}
@@ -319,8 +340,18 @@ function Paywall({
         </div>
       )}
 
+      {/* 手动核实按钮（轮询超时 / 回跳失败时用） */}
+      {(polling || processing) && (
+        <button
+          onClick={onReconcile}
+          className="w-full mt-sm text-xs text-primary underline"
+        >
+          我已支付 · 重新核实
+        </button>
+      )}
+
       <div className="caps text-2xs text-fg-faint text-center mt-md">
-        安全支付 · 由 PayPal 提供保障
+        安全支付 · 由 {isAlipay ? '支付宝' : 'PayPal'} 提供保障
       </div>
     </div>
   );

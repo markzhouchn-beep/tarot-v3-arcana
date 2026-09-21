@@ -198,7 +198,10 @@ router.post('/create', optionalAuth, async (req, res) => {
           const tierName = tier === 'single' ? '单张牌阵' : tier === 'three' ? '三张牌阵' : '十张牌阵';
           const subject = `ARCANA ai · ${tierName}`;
           const notifyUrl = config.ALIPAY_NOTIFY_URL || `${config.DOMAIN}/api/alipay/notify`;
-          const returnUrl = `${config.FRONTEND_URL}/?pay_method=alipay`;
+          // 动态 returnUrl：根据请求协议决定（测试站 HTTP / 正式站 HTTPS）
+          const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
+          const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
+          const returnUrl = `${proto}://${host}/?pay_method=alipay`;
           payUrl = createWapPay({
             outTradeNo,
             totalAmount: amount,

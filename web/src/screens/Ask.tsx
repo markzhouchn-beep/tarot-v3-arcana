@@ -8,7 +8,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
-import { spreadsApi, ordersApi, authApi, membershipApi } from '../lib/api';
+import { spreadsApi, ordersApi, authApi, membershipApi, detectCountry } from '../lib/api';
 
 interface Spread {
   id: string;
@@ -45,6 +45,8 @@ export default function Ask() {
   const [error, setError] = useState<string | null>(null);
   const [tier, setTier] = useState<string>('guest');
   const [user, setUser] = useState<any>(null);
+  // 根据 IP 自动推荐支付方式（CN/HK/MO → 支付宝，其他 → PayPal）
+  const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'alipay'>('paypal');
 
   const prefilledQuestion = searchParams.get('question') || '';
 
@@ -64,6 +66,17 @@ export default function Ask() {
       .then(s => { setSpread(s); setLoading(false); })
       .catch(err => { setError(err.message); setLoading(false); });
   }, [spreadId]);
+
+  // IP 检测支付方式
+  useEffect(() => {
+    detectCountry().then(country => {
+      if (country === 'CN' || country === 'HK' || country === 'MO') {
+        setPaymentMethod('alipay');
+      } else {
+        setPaymentMethod('paypal');
+      }
+    }).catch(() => {});
+  }, []);
 
   // 预填问题
   useEffect(() => {
@@ -90,6 +103,7 @@ export default function Ask() {
         question: question.trim(),
         tier,
         device_id: getDeviceId(),
+        payment_method: paymentMethod,
       });
       // payUrl 中转：创建时存 sessionStorage，Spread 页面读取
       if (result.payUrl) {

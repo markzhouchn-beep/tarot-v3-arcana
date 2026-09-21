@@ -246,7 +246,9 @@ router.post('/create', async (req, res) => {
     const privateKey = normalizePrivateKey(config.ALIPAY_PRIVATE_KEY);
 
     const notifyUrl = `${config.DOMAIN}/api/alipay/notify`;
-    const returnUrl = `${config.FRONTEND_URL}/?pay_method=alipay`;
+    const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
+    const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
+    const returnUrl = `${proto}://${host}/?pay_method=alipay`;
 
     const payUrl = createWapPay({
       outTradeNo: order.afdian_out_trade_no,

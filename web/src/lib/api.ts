@@ -83,6 +83,11 @@ export const ordersApi = {
     return request(`/orders${qs.toString() ? '?' + qs.toString() : ''}`);
   },
   reconcile: (id: string) => request(`/orders/${id}/reconcile`, { method: 'POST' }),
+  // 支付宝主动查询（Spread 页"我已支付"按钮用）
+  reconcileAlipay: (id: string) => request('/alipay/query', {
+    method: 'POST',
+    body: JSON.stringify({ orderId: id }),
+  }),
   // v3.0.1 补充：调用 AI 生成解读
   interpret: (id: string) => request(`/orders/${id}/interpret`, { method: 'POST' }),
   // ❌ v3.0 已删除 trustPaid（PD v0.8：不允前端直接标 paid）
