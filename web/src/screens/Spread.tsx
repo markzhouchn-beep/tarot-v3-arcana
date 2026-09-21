@@ -45,14 +45,9 @@ export default function Spread() {
 
   useEffect(() => {
     if (!id) return;
+    // v3.0.4：payUrl 改由服务端 GET /api/orders/:id 每次返回最新（避免旧签名 sessionStorage 缓存导致 invalid-signature）
     ordersApi.get(id)
       .then(o => {
-        // payUrl 从 sessionStorage 中转回来（创建时不存数据库）
-        const storedPayUrl = sessionStorage.getItem(`payUrl_${id}`);
-        if (storedPayUrl) {
-          o.payUrl = storedPayUrl;
-          sessionStorage.removeItem(`payUrl_${id}`);
-        }
         setOrder(o);
         setLoading(false);
       })

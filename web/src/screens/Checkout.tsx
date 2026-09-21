@@ -73,10 +73,7 @@ export default function Checkout() {
         device_id: getDeviceId(),
         payment_method: payMethod,
       });
-      // payUrl 中转：创建时存 sessionStorage，Spread 页面读取
-      if (result.payUrl) {
-        sessionStorage.setItem(`payUrl_${result.orderId}`, result.payUrl);
-      }
+      // v3.0.4：不再 sessionStorage 缓存 payUrl，由服务端 GET /api/orders/:id 每次返回最新签名
       navigate(`/spread/${result.orderId}`);
     } catch (err: any) {
       setError(err.message);

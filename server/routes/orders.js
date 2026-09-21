@@ -239,7 +239,7 @@ router.post('/create', optionalAuth, async (req, res) => {
  * GET /api/orders/:id
  * 查询订单状态
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const order = db.prepare(`SELECT * FROM orders WHERE id = ?`).get(req.params.id);
     if (!order) {
@@ -255,6 +255,43 @@ router.get('/:id', (req, res) => {
       LIMIT 1
     `).get(req.params.id);
 
+    // v3.0.4：pending 订单按 payment_method 重新生成 payUrl
+    // （DB 不存 payUrl，避免旧签名 sessionStorage 缓存导致 invalid-signature）
+    let payUrl = null;
+    if (order.status === 'pending' && order.amount > 0) {
+      try {
+        const tierName = order.tier === 'single' ? '单张牌阵' : order.tier === 'three' ? '三张牌阵' : '十张牌阵';
+        const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
+        const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
+        const returnUrl = `${proto}://${host}/?pay_method=${order.payment_method}`;
+        const notifyUrl = config.ALIPAY_NOTIFY_URL || `${config.DOMAIN}/api/alipay/notify`;
+
+        if (order.payment_method === 'alipay' && config.ALIPAY_APP_ID) {
+          const { createWapPay, normalizePrivateKey } = await import('../lib/alipay.js');
+          payUrl = createWapPay({
+            outTradeNo: order.afdian_out_trade_no,
+            totalAmount: order.amount,
+            subject: `ARCANA ai · ${tierName}`,
+            appId: config.ALIPAY_APP_ID,
+            privateKey: normalizePrivateKey(config.ALIPAY_PRIVATE_KEY),
+            notifyUrl,
+            returnUrl,
+            sandbox: String(config.ALIPAY_SANDBOX ?? '0') === '1',
+          });
+        } else if (order.payment_method === 'paypal') {
+          const { createPaypalOrder } = await import('../lib/paypal.js');
+          const tierNames = { single: '单张牌阵', three: '三张牌阵', ten: '十张牌阵' };
+          const tierNameEn = order.tier === 'single' ? 'Single' : order.tier === 'three' ? 'Three-Card' : 'Ten-Card';
+          const symbol = '$';
+          const description = `Arcana AI · ${tierNames[order.tier] || tierNameEn} (${symbol}${order.amount})`;
+          const r = await createPaypalOrder(order.id, order.amount, 'USD', description);
+          payUrl = r.approvalUrl;
+        }
+      } catch (err) {
+        console.warn('[orders] payUrl 重算失败:', err.message);
+      }
+    }
+
     res.json({
       id: order.id,
       status: order.status,
@@ -266,6 +303,7 @@ router.get('/:id', (req, res) => {
       spread_type: order.spread_type,
       payment_method: order.payment_method,
       paypal_order_id: order.paypal_order_id || null,
+      payUrl, // v3.0.4：服务端每次返回最新签名
       // v3.0.1 补充 reading
       reading: reading ? parseReading(reading.interpretation) : null,
       // v3.0.3 追问用：reading_id（OracleChat 需要）
