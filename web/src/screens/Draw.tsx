@@ -47,6 +47,7 @@ export default function Draw() {
   const [phase, setPhase] = useState<Phase>('shuffle');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [skipped, setSkipped] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
@@ -57,6 +58,11 @@ export default function Draw() {
 
   // 抽牌动画时序
   useEffect(() => {
+    if (skipped) {
+      // 用户跳过：直接跳到牌阵页
+      if (orderId) navigate(`/spread/${orderId}`);
+      return;
+    }
     let timer: any;
     const tick = () => {
       setPhase(p => {
@@ -73,7 +79,7 @@ export default function Draw() {
     };
     timer = setTimeout(tick, PHASE_DURATION.shuffle);
     return () => clearTimeout(timer);
-  }, [orderId, navigate]);
+  }, [orderId, navigate, skipped]);
 
   // 进度条
   useEffect(() => {
@@ -84,6 +90,15 @@ export default function Draw() {
       setProgress(Math.min(100, (elapsed / totalMs) * 100));
     }, 50);
     return () => clearInterval(interval);
+  }, []);
+
+  // 2026-09-21：跳过动画 — Esc 键监听
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSkipped(true);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   if (error) {
@@ -173,6 +188,15 @@ export default function Draw() {
             </div>
           </>
         )}
+
+        {/* 2026-09-21：跳过按钮 */}
+        <button
+          onClick={() => setSkipped(true)}
+          className="mt-xl caps text-xs text-fg-faint hover:text-primary transition-colors underline"
+          aria-label="跳过抽牌动画"
+        >
+          跳过动画 →
+        </button>
       </div>
     </div>
   );

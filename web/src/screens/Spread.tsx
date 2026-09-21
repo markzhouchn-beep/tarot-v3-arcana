@@ -62,6 +62,7 @@ export default function Spread() {
 
   // PayPal / 支付宝 回跳后刷新订单状态
   // 2026-09-21：支付宝回跳后自动触发 reconcile 查询（修复 ME-01）
+  // 2026-09-21 v1.1.6：失败重试 3 次（间隔 2s），都失败才提示用户
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const from = params.get('from');
@@ -73,15 +74,26 @@ export default function Spread() {
         .then(o => { setOrder(o); setLoading(false); })
         .catch(() => {});
     } else if (payMethod === 'alipay') {
-      // 支付宝：清理 URL，触发一次主动 reconcile
+      // 支付宝：清理 URL，触发主动 reconcile（最多 3 次）
       window.history.replaceState({}, '', window.location.pathname);
-      // 直接调一次 reconcileAlipay，看是否已支付
-      ordersApi.reconcileAlipay(id!)
-        .then(res => {
-          if (res.status === 'paid' || res.ok) {
-            ordersApi.get(id!).then(o => { setOrder(o); setLoading(false); }).catch(() => {});
-          }
-        })
+      let attempts = 0;
+      const tryReconcile = () => {
+        attempts++;
+        ordersApi.reconcileAlipay(id!)
+          .then(res => {
+            if (res.status === 'paid' || res.ok) {
+              ordersApi.get(id!).then(o => { setOrder(o); setLoading(false); }).catch(() => {});
+            } else if (attempts < 3) {
+              setTimeout(tryReconcile, 2000);
+            } else {
+              setError('支付确认中...若已完成支付请手动刷新');
+            }
+          })
+          .catch(() => {
+            if (attempts < 3) setTimeout(tryReconcile, 2000);
+          });
+      };
+      tryReconcile();
         .catch(() => {});
     }
   }, [id]);

@@ -42,6 +42,7 @@ export default function Reading() {
   const [interpreting, setInterpreting] = useState(false);
   const [pollCount, setPollCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [retryable, setRetryable] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -164,6 +165,7 @@ export default function Reading() {
   // 启动解读
   const startInterpret = async (orderId: string) => {
     setInterpreting(true);
+    setError(null);
     try {
       await ordersApi.interpret(orderId);
       // 轮询
@@ -182,12 +184,14 @@ export default function Reading() {
         if (count >= 30) {
           clearInterval(timer);
           setInterpreting(false);
-          setError('解读生成超时，请刷新重试');
+          setError('解读生成超时');
+          setRetryable(true); // 显示重试按钮
         }
       }, 2000);
     } catch (err: any) {
       setError(err.message);
       setInterpreting(false);
+      setRetryable(true); // 显示重试按钮
     }
   };
 
@@ -260,9 +264,19 @@ export default function Reading() {
         <ScreenHeader back="/spreads" title="错误" />
         <div className="panel p-lg border-secondary/30 bg-secondary/5">
           <p className="text-secondary">{error || '订单不存在'}</p>
-          <button onClick={() => navigate('/spreads')} className="btn-secondary mt-md">
-            返回
-          </button>
+          <div className="flex gap-sm mt-md">
+            {retryable && order && (
+              <button
+                onClick={() => startInterpret(order.id)}
+                className="btn-primary"
+              >
+                重新生成解读
+              </button>
+            )}
+            <button onClick={() => navigate('/spreads')} className="btn-secondary">
+              返回牌阵
+            </button>
+          </div>
         </div>
       </Layout>
     );

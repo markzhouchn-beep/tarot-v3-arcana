@@ -266,7 +266,7 @@ export default function Hero() {
           <div className="flex items-center gap-md">
             <div className="text-2xl">✦</div>
             <div className="flex-1">
-              <div className="caps text-primary mb-2xs">会员 · 月卡 ¥19.9 / 年卡 ¥199</div>
+              <div className="caps text-primary mb-2xs">银月会员 · ¥19.9/月 · 每日 3 次 Yes/No + 5 次追问</div>
               <p className="text-sm text-fg-secondary font-body">
                 每日 3 次 Yes/No · 5 次追问 · 解锁全部高级牌阵
               </p>
@@ -317,7 +317,7 @@ export default function Hero() {
               <span className="text-xl">💎</span>
               <div>
                 <div className="font-display text-sm text-fg">会员套餐</div>
-                <div className="text-2xs text-fg-faint font-body">¥19.9/月 起 · 无限追问 + 全部高级牌阵</div>
+                <div className="text-2xs text-fg-faint font-body">银月 ¥19.9/月 · 金月 ¥39.9/月（订阅功能升级中）</div>
               </div>
             </div>
             <span className="text-fg-faint text-xs">→</span>
@@ -392,17 +392,21 @@ function PriceCard({
         </div>
       </div>
 
-      {/* 问题输入框（点击进入 Ask 页面） */}
+      {/* 问题输入框（可输入，点击「立即抽」/「✦」也走同一路径） */}
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
-        onClick={handleTextareaClick}
-        onFocus={handleTextareaClick}
+        onKeyDown={(e) => {
+          // Cmd/Ctrl + Enter 提交
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault();
+            handleDraw();
+          }
+        }}
         placeholder={questionHint}
         maxLength={500}
         rows={1}
-        readOnly
-        className="w-full bg-bg-canvas border border-border rounded px-sm py-xs text-xs text-fg placeholder:text-fg-faint font-body resize-none focus:outline-none focus:border-primary cursor-pointer"
+        className="w-full bg-bg-canvas border border-border rounded px-sm py-xs text-xs text-fg placeholder:text-fg-faint font-body resize-none focus:outline-none focus:border-primary"
       />
 
       {/* CTA 按钮 */}
