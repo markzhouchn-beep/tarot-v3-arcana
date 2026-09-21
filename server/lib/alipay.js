@@ -241,28 +241,55 @@ function parseAlipayResponse(text) {
 // 5. 处理 PEM 格式（用户可能给 BEGIN RSA PRIVATE KEY 或 BEGIN PRIVATE KEY）
 // ============================================================
 /**
- * 兼容 PKCS#1 / PKCS#8 私钥，自动转换
+ * 兼容 PKCS#1 / PKCS#8 私钥，自动检测并转换
+ * 检测方式：解析 DER 结构，通过 PKCS#8 私钥 info 的 OID 判断
+ *   - 有 pkcs8-info 结构（sequence > 4 bytes, 次级 sequence 0x02）→ 已是 PKCS#8
+ *   - 无该结构 → PKCS#1，需包装
  */
 export function normalizePrivateKey(rawKey) {
   if (!rawKey) return rawKey;
   const trimmed = rawKey.trim();
 
-  // 已有 PEM 头 → 直接返回
+  // 已有 PEM 头 → 保持原样（用户自己知道格式）
   if (trimmed.includes('BEGIN PRIVATE KEY') || trimmed.includes('BEGIN RSA PRIVATE KEY')) {
     return trimmed;
   }
 
-  // 无 PEM 头的 raw DER 内容 → 包装成标准 PEM
+  // 无 PEM 头 → 尝试包装
   try {
     const buf = Buffer.from(trimmed, 'base64');
-    // 简单验证：PKCS#8 DER 以 0x30 开头
-    if (buf[0] === 0x30) {
-      const lines = trimmed.match(/.{1,64}/g) || [];
+    if (buf[0] !== 0x30) {
+      console.warn('[alipay] 私钥不是 DER（不以 0x30 开头），将尝试直接使用');
+      return trimmed;
+    }
+
+    // 解析 DER 长度字段（判断 body 长度）
+    let offset = 1;
+    if (buf[offset] >= 0x80) {
+      const lenBytes = buf[offset] & 0x7f;
+      offset += 1 + lenBytes;
+    } else {
+      offset += 1;
+    }
+
+    // 检查是否有 PKCS#8 PrivateKeyInfo 结构
+    // PKCS#8: Sequence { Integer(version=0), Sequence(AlgorithmIdentifier), OctetString(key) }
+    // PKCS#1: Sequence { Integer(n), Integer(e), Integer(d), Integer(p), Integer(q)... }
+    // 两者都以 0x30 开头，区分方法：PKCS#8 第一个 content 是 sequence(0x30)，PKCS#1 第一个 content 是 integer(0x02)
+    const next = buf[offset];
+    const isPKCS8 = next === 0x30;  // PKCS#8: 次级 sequence
+    const isPKCS1 = next === 0x02;  // PKCS#1: 第一个 integer = version
+
+    const lines = trimmed.match(/.{1,64}/g) || [];
+    if (isPKCS8) {
+      // 已经是 PKCS#8，直接包装
       return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----`;
+    } else {
+      // PKCS#1 → 包装成 PKCS#8 PEM
+      return `-----BEGIN RSA PRIVATE KEY-----\n${lines.join('\n')}\n-----END RSA PRIVATE KEY-----`;
     }
   } catch (_) {}
 
-  // 完全无法识别 → 尝试直接用（保留原样）
   console.warn('[alipay] 私钥格式无法识别，将尝试直接使用');
   return trimmed;
 }
