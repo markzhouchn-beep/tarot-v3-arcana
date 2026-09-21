@@ -24,6 +24,24 @@ db.pragma('busy_timeout = 5000');      // 5 秒锁等待
 
 console.log(`[db] connected: ${dbPath}`);
 
+// v3.1 支付宝：自动给 orders 加 alipay_trade_no 字段（如没有）
+try {
+  db.exec(`ALTER TABLE orders ADD COLUMN alipay_trade_no VARCHAR(64)`);
+} catch (e) {
+  if (!e.message.includes('duplicate column') && !e.message.includes('no such table')) {
+    console.warn('[db] ALTER TABLE orders (alipay_trade_no):', e.message);
+  }
+}
+
+// v3.1 支付宝：自动给 orders 加 paid_amount 字段（如没有）
+try {
+  db.exec(`ALTER TABLE orders ADD COLUMN paid_amount DECIMAL(8,2)`);
+} catch (e) {
+  if (!e.message.includes('duplicate column') && !e.message.includes('no such table')) {
+    console.warn('[db] ALTER TABLE orders (paid_amount):', e.message);
+  }
+}
+
 /**
  * 事务包装器（用于需要原子操作的场景）
  * @param {Function} fn - 在事务中执行的函数

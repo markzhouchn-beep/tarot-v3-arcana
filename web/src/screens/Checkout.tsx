@@ -1,6 +1,7 @@
 // ============================================================
 // screens/Checkout.tsx · /checkout/:type — 单次付费（不走会员）
-// Phase 1.6 · 直接买 1 次单牌 / 三张 / 十张
+// v3.1 · 2026-09-21
+// 新增：支付方式选择（PayPal / 支付宝）
 // ============================================================
 
 import { useEffect, useState } from 'react';
@@ -8,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
-import { ordersApi } from '../lib/api';
+import { ordersApi, detectCountry } from '../lib/api';
 
 const PRODUCTS = [
   { id: 'single', label: '单张牌阵', sku: 'AFDIAN_SKU_SINGLE', price: 1, cards: 1 },
@@ -25,12 +26,26 @@ function getDeviceId(): string {
   return id;
 }
 
+type PayMethod = 'paypal' | 'alipay';
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { type } = useParams<{ type: string }>();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [payMethod, setPayMethod] = useState<PayMethod>('paypal');
   const product = PRODUCTS.find(p => p.id === type);
+
+  // 根据 IP 国家自动推荐支付方式（CN/HK/MO → 支付宝，其他 → PayPal）
+  useEffect(() => {
+    detectCountry().then((country) => {
+      if (country === 'CN' || country === 'HK' || country === 'MO') {
+        setPayMethod('alipay');
+      } else {
+        setPayMethod('paypal');
+      }
+    }).catch(() => { /* keep default */ });
+  }, []);
 
   if (!product) {
     return (
@@ -56,8 +71,9 @@ export default function Checkout() {
         question: '（单次购买占位问题）',
         tier: product.id,
         device_id: getDeviceId(),
+        payment_method: payMethod,
       });
-      // payUrl 中转：创建时存 sessionStorage，Spread 页面读取（payUrl 不存数据库）
+      // payUrl 中转：创建时存 sessionStorage，Spread 页面读取
       if (result.payUrl) {
         sessionStorage.setItem(`payUrl_${result.orderId}`, result.payUrl);
       }
@@ -88,6 +104,37 @@ export default function Checkout() {
         <li>· 不开通会员也能用</li>
       </ul>
 
+      {/* 支付方式选择 */}
+      <div className="mb-md">
+        <div className="caps text-2xs text-fg-faint mb-xs">选择支付方式</div>
+        <div className="grid grid-cols-2 gap-sm">
+          <button
+            onClick={() => setPayMethod('paypal')}
+            className={`panel p-md text-center transition-all ${
+              payMethod === 'paypal'
+                ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                : 'border-border opacity-60 hover:opacity-100'
+            }`}
+          >
+            <div className="text-2xl mb-xs">💳</div>
+            <div className="text-sm font-medium">PayPal</div>
+            <div className="text-xxs text-fg-faint mt-xs">信用卡 / 余额</div>
+          </button>
+          <button
+            onClick={() => setPayMethod('alipay')}
+            className={`panel p-md text-center transition-all ${
+              payMethod === 'alipay'
+                ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                : 'border-border opacity-60 hover:opacity-100'
+            }`}
+          >
+            <div className="text-2xl mb-xs">🅿️</div>
+            <div className="text-sm font-medium">支付宝</div>
+            <div className="text-xxs text-fg-faint mt-xs">手机网站支付</div>
+          </button>
+        </div>
+      </div>
+
       {error && (
         <div className="panel p-md border-secondary/30 bg-secondary/5 mb-md text-sm text-secondary text-center">
           {error}
@@ -95,18 +142,24 @@ export default function Checkout() {
       )}
 
       <Button onClick={handleBuy} variant="primary" size="lg" fullWidth loading={submitting}>
-        💎 立即购买 · 跳转 PayPal
+        {payMethod === 'alipay' ? '🅿️ 立即购买 · 跳转支付宝' : '💎 立即购买 · 跳转 PayPal'}
       </Button>
 
       {/* 信任标识 */}
       <div className="mt-md flex items-center justify-center gap-sm text-xxs text-fg-faint">
         <span className="inline-flex items-center gap-xs">
           <span className="text-secondary">🛡️</span>
-          <span>由 PayPal 提供安全支付保障</span>
+          <span>
+            {payMethod === 'alipay'
+              ? '由支付宝提供安全支付保障'
+              : '由 PayPal 提供安全支付保障'}
+          </span>
         </span>
       </div>
       <div className="caps text-2xs text-fg-faint text-center mt-xs">
-        支持信用卡 · PayPal 余额 · 支付完成自动返回
+        {payMethod === 'alipay'
+          ? '支持余额 / 花呗 / 银行卡 · 支付完成自动返回'
+          : '支持信用卡 · PayPal 余额 · 支付完成自动返回'}
       </div>
     </Layout>
   );

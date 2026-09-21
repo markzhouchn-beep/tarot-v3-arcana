@@ -190,6 +190,29 @@ router.post('/create', optionalAuth, async (req, res) => {
         } catch (err) {
           console.error('[orders] PayPal 创建失败:', err.message);
         }
+      } else if (payment_method === 'alipay' && config.ALIPAY_APP_ID && amount > 0) {
+        // 支付宝手机网站支付（固定 CNY，不做货币换算）
+        try {
+          const { createWapPay, normalizePrivateKey } = await import('../lib/alipay.js');
+          const privateKey = normalizePrivateKey(config.ALIPAY_PRIVATE_KEY);
+          const tierName = tier === 'single' ? '单张牌阵' : tier === 'three' ? '三张牌阵' : '十张牌阵';
+          const subject = `ARCANA ai · ${tierName}`;
+          const notifyUrl = config.ALIPAY_NOTIFY_URL || `${config.DOMAIN}/api/alipay/notify`;
+          const returnUrl = `${config.FRONTEND_URL}/?pay_method=alipay`;
+          payUrl = createWapPay({
+            outTradeNo,
+            totalAmount: amount,
+            subject,
+            appId: config.ALIPAY_APP_ID,
+            privateKey,
+            notifyUrl,
+            returnUrl,
+            sandbox: config.ALIPAY_SANDBOX === '1',
+          });
+          console.log(`[orders] 支付宝订单: order=${orderId}, amount=¥${amount}, sandbox=${config.ALIPAY_SANDBOX === '1'}`);
+        } catch (err) {
+          console.error('[orders] 支付宝创建失败:', err.message);
+        }
       }
     }
 

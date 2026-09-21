@@ -48,6 +48,13 @@ export const config = {
   PAYPAL_CLIENT_SECRET: str('PAYPAL_CLIENT_SECRET', ''),
   PAYPAL_MODE: str('PAYPAL_MODE', 'live'), // live | sandbox
 
+  // 支付宝手机网站支付（v3.1）
+  ALIPAY_APP_ID: str('ALIPAY_APP_ID', ''),
+  ALIPAY_PRIVATE_KEY: str('ALIPAY_PRIVATE_KEY', ''),
+  ALIPAY_PUBLIC_KEY: str('ALIPAY_PUBLIC_KEY', ''),
+  ALIPAY_SANDBOX: str('ALIPAY_SANDBOX', '0'), // 1 = 沙箱（openapi.alipaydev.com），0 = 正式
+  ALIPAY_NOTIFY_URL: str('ALIPAY_NOTIFY_URL', ''), // 可选，留空用 ${DOMAIN}/api/alipay/notify
+
   // 订阅 plan_id
   AFDIAN_PLAN_SILVER_MONTHLY: str('AFDIAN_PLAN_SILVER_MONTHLY', ''),
   AFDIAN_PLAN_SILVER_YEARLY: str('AFDIAN_PLAN_SILVER_YEARLY', ''),

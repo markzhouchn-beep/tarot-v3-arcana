@@ -24,6 +24,7 @@ import readingsRouter from './routes/readings.js';
 import spreadsRouter from './routes/spreads.js';
 import afdianWebhookRouter from './routes/afdian-webhook.js';
 import paypalRouter from './routes/paypal.js';
+import alipayRouter from './routes/alipay.js';
 import adminRouter from './routes/admin.js';
 import invitesRouter from './routes/invites.js';
 import communityRouter from './routes/community.js';
@@ -104,6 +105,7 @@ app.use('/api/community', communityRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api/paypal', paypalRouter); // webhook + API
 app.use('/paypal', paypalRouter);     // 浏览器回跳（return/cancel）
+app.use('/api/alipay', alipayRouter); // 支付宝 create + notify + return + query
 
 // ===== 根路径（健康检查 banner） =====
 app.get('/', (req, res) => {
