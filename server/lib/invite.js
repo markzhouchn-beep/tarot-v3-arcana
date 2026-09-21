@@ -405,7 +405,7 @@ export function getInviteStats(userId) {
     invite_code: user?.invite_code,
     // 后端生成完整邀请链接（避免前端硬编码 origin 在本地/生产不一致）
     invite_url: user?.invite_code
-      ? `${config.FRONTEND_URL}/?invite=${user.invite_code}`
+      ? `${config.FRONTEND_PRIMARY}/?invite=${user.invite_code}`
       : null,
     invites,
     rewards,

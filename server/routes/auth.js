@@ -41,7 +41,7 @@ router.post('/magic-link', async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(crypto.randomUUID(), email, token, purpose, expiresAt, req.ip, invite_code || null);
 
-    const magicUrl = `${config.FRONTEND_URL}/auth/callback?token=${token}&purpose=${purpose}${invite_code ? `&invite_code=${encodeURIComponent(invite_code)}` : ''}`;
+    const magicUrl = `${config.FRONTEND_PRIMARY}/auth/callback?token=${token}&purpose=${purpose}${invite_code ? `&invite_code=${encodeURIComponent(invite_code)}` : ''}`;
 
     const result = await sendMagicLink({ email, magicUrl, purpose });
 

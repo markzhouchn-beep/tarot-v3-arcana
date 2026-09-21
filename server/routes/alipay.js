@@ -149,11 +149,11 @@ router.get('/return', async (req, res) => {
       .get(outTradeNo);
     if (order) {
       const status = verified ? 'paid' : 'unknown';
-      return res.redirect(`${config.FRONTEND_URL}/spread/${order.id}?pay_status=${status}`);
+      return res.redirect(`${config.FRONTEND_PRIMARY}/spread/${order.id}?pay_status=${status}`);
     }
   }
 
-  return res.redirect(`${config.FRONTEND_URL}/?pay_status=unknown`);
+  return res.redirect(`${config.FRONTEND_PRIMARY}/?pay_status=unknown`);
 });
 
 // ===== 主动查询订单（前端"我已支付"按钮 / 兜底） =====
@@ -179,7 +179,7 @@ router.post('/query', async (req, res) => {
     const result = await alipayQuery(order.afdian_out_trade_no, {
       appId: config.ALIPAY_APP_ID,
       privateKey,
-      sandbox: config.ALIPAY_SANDBOX === '1',
+      sandbox: String(config.ALIPAY_SANDBOX ?? '0') === '1',
     });
 
     if (!result.ok) {
@@ -258,7 +258,7 @@ router.post('/create', async (req, res) => {
       privateKey,
       notifyUrl,
       returnUrl,
-      sandbox: config.ALIPAY_SANDBOX === '1',
+      sandbox: String(config.ALIPAY_SANDBOX ?? '0') === '1',
     });
 
     db.prepare(

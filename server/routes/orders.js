@@ -210,7 +210,7 @@ router.post('/create', optionalAuth, async (req, res) => {
             privateKey,
             notifyUrl,
             returnUrl,
-            sandbox: config.ALIPAY_SANDBOX === '1',
+            sandbox: String(config.ALIPAY_SANDBOX ?? '0') === '1',
           });
           console.log(`[orders] 支付宝订单: order=${orderId}, amount=¥${amount}, sandbox=${config.ALIPAY_SANDBOX === '1'}`);
         } catch (err) {
@@ -289,7 +289,7 @@ router.get('/', requireAuth, (req, res) => {
   try {
     const userId = req.user.id;
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const sql = `SELECT id, question, status, amount, spread_type, cards_json, paid_amount, created_at, paid_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
+    const sql = `SELECT id, question, status, amount, payment_method, spread_type, cards_json, paid_amount, created_at, paid_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
     const params = [userId, limit];
 
     const rows = db.prepare(sql).all(...params);
@@ -299,6 +299,7 @@ router.get('/', requireAuth, (req, res) => {
       question: r.question,
       status: r.status,
       amount: r.amount,
+      payment_method: r.payment_method,
       spread_type: r.spread_type,
       cards_count: r.cards_json ? JSON.parse(r.cards_json).length : 0,
       created_at: r.created_at,

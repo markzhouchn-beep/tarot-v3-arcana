@@ -67,7 +67,7 @@ async function detectCountry(ip) {
 
   try {
     // ip-api.com 免费接口（无 key，45 req/min）
-    const url = `http://ip-api.com/json/${ip}?fields=countryCode`;
+    const url = `https://ip-api.com/json/${ip}?fields=countryCode`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
 

@@ -103,15 +103,16 @@ export function requireAdmin(req, res, next) {
     if (!bcrypt.compareSync(pass, hash)) {
       return res.status(401).json({ error: 'ADMIN_AUTH_FAILED' });
     }
-  } else if (config.NODE_ENV !== 'production') {
-    // dev fallback（仅本地 dev 用，生产环境必须设 ADMIN_PASSWORD_HASH）
+  } else if (process.env.NODE_ENV === 'development') {
+    // 2026-09-21：dev fallback 严格限定 NODE_ENV === 'development'
+    // 原代码用 config.NODE_ENV !== 'production' 过于宽松
     const DEV_PASSWORD = 'DevAdmin2026';
     if (pass !== DEV_PASSWORD) {
       return res.status(401).json({ error: 'ADMIN_AUTH_FAILED' });
     }
   } else {
-    // 生产环境必须设 hash
-    return res.status(500).json({ error: 'ADMIN_NOT_CONFIGURED', message: '生产环境必须配置 ADMIN_PASSWORD_HASH' });
+    // 生产/测试环境必须设 hash
+    return res.status(500).json({ error: 'ADMIN_NOT_CONFIGURED', message: '生产/测试环境必须配置 ADMIN_PASSWORD_HASH' });
   }
 
   req.admin = { username: user };

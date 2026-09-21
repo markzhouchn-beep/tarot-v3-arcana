@@ -5,6 +5,7 @@
 // ============================================================
 
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import db from '../db.js';
 import { requireAdmin } from '../middleware/auth.js';
 

@@ -60,15 +60,28 @@ export default function Spread() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [id]);
 
-  // PayPal 回跳后刷新订单状态
+  // PayPal / 支付宝 回跳后刷新订单状态
+  // 2026-09-21：支付宝回跳后自动触发 reconcile 查询（修复 ME-01）
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('from') === 'paypal') {
-      // 清理 URL，避免刷新后又触发
+    const from = params.get('from');
+    const payMethod = params.get('pay_method');
+    if (from === 'paypal') {
+      // PayPal：清理 URL，重新拉订单
       window.history.replaceState({}, '', window.location.pathname);
-      // 重新拉订单
       ordersApi.get(id!)
         .then(o => { setOrder(o); setLoading(false); })
+        .catch(() => {});
+    } else if (payMethod === 'alipay') {
+      // 支付宝：清理 URL，触发一次主动 reconcile
+      window.history.replaceState({}, '', window.location.pathname);
+      // 直接调一次 reconcileAlipay，看是否已支付
+      ordersApi.reconcileAlipay(id!)
+        .then(res => {
+          if (res.status === 'paid' || res.ok) {
+            ordersApi.get(id!).then(o => { setOrder(o); setLoading(false); }).catch(() => {});
+          }
+        })
         .catch(() => {});
     }
   }, [id]);

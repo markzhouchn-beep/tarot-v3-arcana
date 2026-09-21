@@ -82,7 +82,7 @@ router.get('/return', async (req, res) => {
   const { token } = req.query; // PayPal order ID
 
   if (!token) {
-    return res.redirect(`${config.FRONTEND_URL}/?paypal_error=no_token`);
+    return res.redirect(`${config.FRONTEND_PRIMARY}/?paypal_error=no_token`);
   }
 
   try {
@@ -95,12 +95,12 @@ router.get('/return', async (req, res) => {
 
     if (!order) {
       console.error('[paypal] 未找到关联订单, paypal_order_id:', token);
-      return res.redirect(`${config.FRONTEND_URL}/?paypal_error=order_not_found`);
+      return res.redirect(`${config.FRONTEND_PRIMARY}/?paypal_error=order_not_found`);
     }
 
     if (order.status === 'paid') {
       // 重复回调，直接跳结果页
-      return res.redirect(`${config.FRONTEND_URL}/spread/${order.id}?from=paypal`);
+      return res.redirect(`${config.FRONTEND_PRIMARY}/spread/${order.id}?from=paypal`);
     }
 
     // 2. 调用 PayPal capture 接口确认收款
@@ -123,11 +123,11 @@ router.get('/return', async (req, res) => {
     console.log(`[paypal] 收款成功: order=${order.id}, capture=${captureResult.captureId}`);
 
     // 5. 跳转回结果页
-    res.redirect(`${config.FRONTEND_URL}/spread/${order.id}?from=paypal`);
+    res.redirect(`${config.FRONTEND_PRIMARY}/spread/${order.id}?from=paypal`);
 
   } catch (err) {
     console.error('[paypal] return 处理失败:', err.message);
-    res.redirect(`${config.FRONTEND_URL}/?paypal_error=${encodeURIComponent(err.message)}`);
+    res.redirect(`${config.FRONTEND_PRIMARY}/?paypal_error=${encodeURIComponent(err.message)}`);
   }
 });
 
@@ -136,7 +136,7 @@ router.get('/return', async (req, res) => {
  * 用户在 PayPal 页面点取消
  */
 router.get('/cancel', (req, res) => {
-  res.redirect(`${config.FRONTEND_URL}/?paypal_cancelled=1`);
+  res.redirect(`${config.FRONTEND_PRIMARY}/?paypal_cancelled=1`);
 });
 
 /**
@@ -144,8 +144,18 @@ router.get('/cancel', (req, res) => {
  * PayPal webhook（备选回调，不依赖浏览器回跳）
  */
 router.post('/webhook', async (req, res) => {
-  // 注意：PayPal webhook 签名验证需要原始 raw body（express.json() 已解析，需 server.js 配合）
-  // 当前以浏览器回跳为主路径，webhook 作为兜底；签名验证在 config.PAYPAL_WEBHOOK_ID 配好后启用
+  // 2026-09-21: 启用 webhook 签名验证（修复 CR-01）
+  try {
+    if (!config.PAYPAL_WEBHOOK_ID) {
+      console.warn('[paypal webhook] ⚠️ PAYPAL_WEBHOOK_ID 未配置，跳过验签（仅开发环境）');
+    } else {
+      await verifyPaypalWebhook(req);
+    }
+  } catch (err) {
+    console.error('[paypal webhook] 验签失败:', err.message);
+    return res.status(400).json({ error: 'INVALID_SIGNATURE' });
+  }
+
   const { event_type, resource } = req.body || {};
   console.log(`[paypal webhook] ${event_type}`);
 
@@ -159,8 +169,8 @@ router.post('/webhook', async (req, res) => {
       const order = db.prepare(`SELECT id FROM orders WHERE paypal_order_id = ? AND status != 'paid'`).get(refId);
       if (order) {
         const now = Math.floor(Date.now() / 1000);
-        db.prepare(`UPDATE orders SET status='paid', paid_at=?, paypal_capture_id=? WHERE id=?`)
-          .run(now, resource.id, order.id);
+        db.prepare(`UPDATE orders SET status='paid', paid_at=?, paypal_capture_id=?, paid_amount=(SELECT amount FROM orders WHERE id=?) WHERE id=?`)
+          .run(now, resource.id, order.id, order.id);
         await fulfillOrder(order.id);
         console.log(`[paypal webhook] 收款成功: order=${order.id}`);
       }

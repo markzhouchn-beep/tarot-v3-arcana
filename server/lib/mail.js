@@ -65,7 +65,7 @@ export async function sendMail({ to, subject, html }) {
  */
 export async function sendRenewalReminderEmail({ userEmail, userNickname, tier, expiresAt, daysLeft }) {
   const tierName = tier === 'gold' ? '金月会员' : '银月会员';
-  const renewUrl = `${config.FRONTEND_URL}/membership`;
+  const renewUrl = `${config.FRONTEND_PRIMARY}/membership`;
 
   const subject = daysLeft === 1
     ? `⏰ 您的 ${tierName}明天到期，请尽快续费`
@@ -124,7 +124,7 @@ export async function sendSubscriptionSuccessEmail({ userEmail, userNickname, ti
         <li>享受更长更深的 AI 解读</li>
       </ul>
       <p style="text-align: center; margin: 30px 0;">
-        <a href="${config.FRONTEND_URL}/spreads" style="background: #8b2e2e; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+        <a href="${config.FRONTEND_PRIMARY}/spreads" style="background: #8b2e2e; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: bold;">
           立即探索
         </a>
       </p>

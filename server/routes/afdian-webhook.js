@@ -9,7 +9,7 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import db from '../db.js';
-import { verifyWebhook, verifyWebhookRSA, inferSubscriptionTier } from '../lib/afdian.js';
+import { verifyWebhookRSA, inferSubscriptionTier } from '../lib/afdian.js';
 import { trackEvent } from '../lib/events.js';
 import { activateSubscription } from './membership.js';
 import { triggerAIReading } from './orders.js';
@@ -52,25 +52,20 @@ router.post('/webhook', async (req, res) => {
   return res.json({ ec: 200, em: 'test_connection_ok' });
   }
 
-  // 1. 签名验证（RSA 优先，否则 MD5）
+  // 1. 签名验证（2026-09-21：强制 RSA，移除 MD5 fallback）
   let signatureValid = false;
   const ts = payload.ts;
   const userId = payload.user_id;
 
   if (process.env.AFDIAN_WEBHOOK_PUBLIC_KEY) {
-  signatureValid = verifyWebhookRSA(payload);
+    signatureValid = verifyWebhookRSA(payload);
   } else {
-  console.warn('[afdian-webhook] ⚠️ 未配置 webhook 公钥，用 MD5 fallback（生产建议配 RSA）');
-  signatureValid = verifyWebhook({
-  user_id: userId,
-  ts,
-  params: rawParams,
-  sign: payload.sign,
-  });
+    console.error('[afdian-webhook] ❌ 未配置 AFDIAN_WEBHOOK_PUBLIC_KEY，拒绝 webhook');
+    return res.status(500).json({ ec: 500, em: 'webhook_public_key_not_configured' });
   }
   if (!signatureValid) {
-  console.error('[afdian-webhook] ❌ 签名验证失败');
-  return res.status(401).json({ ec: 401, em: 'invalid_signature' });
+    console.error('[afdian-webhook] ❌ RSA 签名验证失败');
+    return res.status(401).json({ ec: 401, em: 'invalid_signature' });
   }
 
   // ❌ 已删除：production + WEBHOOK_SECRET 校验 remark

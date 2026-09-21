@@ -28,7 +28,17 @@ export const config = {
   NODE_ENV: str('NODE_ENV', 'development'),
   PORT: int('PORT', 3003),
   DOMAIN: str('DOMAIN', 'http://localhost:3003'),
+  // 2026-09-21：FRONTEND_URL 支持逗号分隔多 URL（多域名），用于 CORS 白名单
+  // FRONTEND_PRIMARY 取第一个，用于 redirect 目标
   FRONTEND_URL: str('FRONTEND_URL', 'http://localhost:5175'),
+  FRONTEND_URL_LIST: (() => {
+    const raw = str('FRONTEND_URL', 'http://localhost:5175');
+    return raw.split(',').map(s => s.trim()).filter(Boolean);
+  })(),
+  FRONTEND_PRIMARY: (() => {
+    const raw = str('FRONTEND_URL', 'http://localhost:5175');
+    return raw.split(',')[0].trim();
+  })(),
   LAN_HOST: str('LAN_HOST', '192.168.0.105'),
 
   // 数据库

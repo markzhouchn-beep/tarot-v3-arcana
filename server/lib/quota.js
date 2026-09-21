@@ -5,6 +5,7 @@
 // ============================================================
 
 import db from '../db.js';
+import crypto from 'node:crypto';
 import { config } from './config.js';
 import { queryOrder } from './afdian.js';
 
