@@ -119,7 +119,7 @@ router.get('/return', async (req, res) => {
       WHERE id = ?
     `).run(now, orderRow?.amount || 0, captureResult.captureId, order.id);
 
-    // 4. 生成解读（和 afdian webhook 同样的逻辑）
+    // 4. 生成解读（与支付渠道无关）
     await fulfillOrder(order.id);
 
     console.log(`[paypal] 收款成功: order=${order.id}, capture=${captureResult.captureId}`);
@@ -184,14 +184,14 @@ router.post('/webhook', async (req, res) => {
 });
 
 // ============================================================
-// fulfillOrder — 生成解读（复用 afdian webhook 逻辑）
+// fulfillOrder — 生成解读（复用 webhook 逻辑）
 // ============================================================
 async function fulfillOrder(orderId) {
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
   if (!order) return;
 
   // 调用者已处理 paid 状态写入，这里只负责生成 AI 解读
-  // （afdian webhook 调用时 order.status 仍是 pending，PayPal return 时已在外面标了 paid）
+  // （PayPal/Alipay return 时已在外面标了 paid）
   const { callAI } = await import('../lib/ai.js');
   const { buildReadingPrompt } = await import('../lib/prompts.js');
 

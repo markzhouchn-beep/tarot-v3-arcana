@@ -49,9 +49,7 @@ export const config = {
   MINIMAX_BASE_URL: str('MINIMAX_BASE_URL', 'https://api.minimaxi.com'),
   MINIMAX_MODEL: str('MINIMAX_MODEL', 'MiniMax-M2.7'),
 
-  // 爱发电（已废弃，保留字段名防报错）
-  AFDIAN_USER_ID: str('AFDIAN_USER_ID', ''),
-  AFDIAN_TOKEN: str('AFDIAN_TOKEN', ''),
+  // 爱发电已下线（2026-09-21）— 所有 AFDIAN_* 配置已废弃
 
   // PayPal
   PAYPAL_CLIENT_ID: str('PAYPAL_CLIENT_ID', ''),
@@ -64,21 +62,6 @@ export const config = {
   ALIPAY_PUBLIC_KEY: str('ALIPAY_PUBLIC_KEY', ''),
   ALIPAY_SANDBOX: str('ALIPAY_SANDBOX', '0'), // 1 = 沙箱（openapi.alipaydev.com），0 = 正式
   ALIPAY_NOTIFY_URL: str('ALIPAY_NOTIFY_URL', ''), // 可选，留空用 ${DOMAIN}/api/alipay/notify
-
-  // 订阅 plan_id
-  AFDIAN_PLAN_SILVER_MONTHLY: str('AFDIAN_PLAN_SILVER_MONTHLY', ''),
-  AFDIAN_PLAN_SILVER_YEARLY: str('AFDIAN_PLAN_SILVER_YEARLY', ''),
-  AFDIAN_PLAN_GOLD_MONTHLY: str('AFDIAN_PLAN_GOLD_MONTHLY', ''),
-  AFDIAN_PLAN_GOLD_YEARLY: str('AFDIAN_PLAN_GOLD_YEARLY', ''),
-
-  // 商品 plan_id（产品页 URL 中的 ID）
-  AFDIAN_PLAN_SINGLE: str('AFDIAN_PLAN_SINGLE', ''),
-  AFDIAN_PLAN_THREE: str('AFDIAN_PLAN_THREE', ''),
-  AFDIAN_PLAN_TEN: str('AFDIAN_PLAN_TEN', ''),
-  // 商品 sku_id（具体型号 ID，查询 query-plan API 获取）
-  AFDIAN_SKU_ID_SINGLE: str('AFDIAN_SKU_ID_SINGLE', ''),
-  AFDIAN_SKU_ID_THREE: str('AFDIAN_SKU_ID_THREE', ''),
-  AFDIAN_SKU_ID_TEN: str('AFDIAN_SKU_ID_TEN', ''),
 
   // 定价
   PRICE_SINGLE: float('PRICE_SINGLE', 1.9),

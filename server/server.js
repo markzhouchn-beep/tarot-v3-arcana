@@ -22,7 +22,6 @@ import oracleRouter from './routes/oracle.js';
 import yesNoRouter from './routes/yes-no.js';
 import readingsRouter from './routes/readings.js';
 import spreadsRouter from './routes/spreads.js';
-import afdianWebhookRouter from './routes/afdian-webhook.js';
 import paypalRouter from './routes/paypal.js';
 import alipayRouter from './routes/alipay.js';
 import adminRouter from './routes/admin.js';
@@ -33,7 +32,6 @@ import feedbackRouter from './routes/feedback.js';
 // 后台任务
 import { startReconcileLoop } from './lib/quota.js';
 import { startDailyScheduler } from './lib/scheduler.js';
-import { pingAfdian } from './lib/afdian.js';
 
 const app = express();
 // 信任 1 层代理（nginx/cloudflare），让 req.ip 拿到真实 IP
@@ -119,7 +117,6 @@ app.use('/api/oracle', (req, _res, next) => {
 app.use('/api/yes-no', yesNoRouter);
 app.use('/api/readings', readingsRouter);
 app.use('/api/spreads', spreadsRouter);
-app.use('/api/afdian', afdianWebhookRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/invites', invitesRouter);
 app.use('/api/community', communityRouter);
@@ -127,6 +124,7 @@ app.use('/api/feedback', feedbackRouter);
 app.use('/api/paypal', paypalRouter); // webhook + API
 app.use('/paypal', paypalRouter);     // 浏览器回跳（return/cancel）
 app.use('/api/alipay', alipayRouter); // 支付宝 create + notify + return + query
+// 爱发电已下线（2026-09-21）
 
 // ===== 根路径（健康检查 banner） =====
 app.get('/', (req, res) => {
@@ -165,19 +163,7 @@ app.listen(PORT, () => {
     startDailyScheduler(); // Phase 2：会员过期降级 + 续费提醒（启动跑一次 + 每 24h）
   }
 
-  // 启动时 ping 爱发电验证 token + 签名是否正确（如果配了的话）
-  if (config.AFDIAN_TOKEN && config.AFDIAN_USER_ID) {
-    pingAfdian().then((r) => {
-      if (r.ok) {
-        console.log('[afdian] ✅ ping 成功：token + 签名验证通过');
-      } else {
-        console.warn(`[afdian] ⚠️ ping 失败：${r.em || r.error || JSON.stringify(r)}`);
-        console.warn('[afdian] reconcile 会受影响！查询订单可能返 not_found');
-      }
-    }).catch((err) => console.warn('[afdian] ping 异常:', err.message));
-  } else {
-    console.warn('[afdian] ⚠️ AFDIAN_TOKEN / AFDIAN_USER_ID 未配置，reconcile 返空');
-  }
+  // 爱发电已下线（2026-09-21）
 });
 
 // 优雅退出

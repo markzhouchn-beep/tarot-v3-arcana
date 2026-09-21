@@ -1,7 +1,7 @@
 // ============================================================
 // screens/Spread.tsx · /spread/:id — 牌阵展示 + 付费墙
 // Phase 1.5 · 第 3 页
-// 创建：2026-09-01 · 23:42（v3.0.1 重写：跳爱发电真页面 + 轮询）
+// 创建：2026-09-01 · 23:42（v3.0.1 重写：跳支付宝/PayPal + 主动 reconcile）
 // ============================================================
 
 import { useEffect, useRef, useState } from 'react';
@@ -86,7 +86,7 @@ export default function Spread() {
     }
   }, [id]);
 
-  // PayPal/Alipay：reconcile 无效（只查爱发电）；改为提示用户等待回跳
+  // PayPal/Alipay：浏览器回跳自动激活；无需客户端 reconcile
   const handleReconcile = async () => {
     if (!order) return;
     if (order.payment_method === 'paypal') {
@@ -111,17 +111,9 @@ export default function Spread() {
         setProcessing(false);
         return;
       }
-      // 爱发电（兜底）
-      const res = await ordersApi.reconcile(order.id);
-      if (res.status === 'paid' || res.already || res.status === 'interpreted') {
-        if (pollRef.current) clearInterval(pollRef.current);
-        setPolling(false);
-        navigate(`/reading/${order.id}`);
-      } else if (res.status === 'still_pending') {
-        setError('未查询到该订单，请确认支付状态后重试');
-      } else {
-        setError(res.message || '核实失败，请稍候重试');
-      }
+      // PayPal：浏览器回跳会自动激活，无需客户端主动 reconcile
+      // 仅提示用户等待页面自动刷新
+      setError('PayPal 付款后页面会自动跳转，如未跳转请稍后刷新本页面');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -142,28 +134,17 @@ export default function Spread() {
   };
 
   const startPolling = () => {
+    // 2026-09-21：支付宝 query 已替代轮询，无需再起 setInterval
+    // 用户回跳后由 useEffect 自动触发一次 reconcileAlipay
     if (!order || polling) return;
     setPolling(true);
-    setPollCount(0);
-    let count = 0;
-    pollRef.current = setInterval(async () => {
-      count++;
-      setPollCount(count);
-      try {
-        const res = await ordersApi.reconcile(order.id);
-        if (res.status === 'paid' || res.already || res.status === 'interpreted') {
-          clearInterval(pollRef.current);
-          setPolling(false);
-          navigate(`/reading/${order.id}`);
-        } else if (count >= 72) {
-          clearInterval(pollRef.current);
-          setPolling(false);
-          setError('轮询超时（6 分钟），请点击"我已支付·重新核实"手动重试');
-        }
-      } catch (e) {
-        // 单次失败不退出轮询
+    setPollCount(1);
+    // 兜底：如果 60s 内没有支付确认，给一个温和提示
+    setTimeout(() => {
+      if (polling) {
+        setError('等待支付确认中...如已完成支付请手动刷新页面');
       }
-    }, 5000);
+    }, 60000);
   };
 
   if (loading) {

@@ -12,9 +12,9 @@ import { Button } from '../components/Button';
 import { ordersApi, detectCountry } from '../lib/api';
 
 const PRODUCTS = [
-  { id: 'single', label: '单张牌阵', sku: 'AFDIAN_SKU_SINGLE', price: 1, cards: 1 },
-  { id: 'three', label: '三张牌阵', sku: 'AFDIAN_SKU_THREE', price: 1.9, cards: 3 },
-  { id: 'ten', label: '十张牌阵', sku: 'AFDIAN_SKU_TEN', price: 9.9, cards: 10 },
+  { id: 'single', label: '单张牌阵', price: 1, cards: 1 },
+  { id: 'three', label: '三张牌阵', price: 1.9, cards: 3 },
+  { id: 'ten', label: '十张牌阵', price: 9.9, cards: 10 },
 ];
 
 function getDeviceId(): string {

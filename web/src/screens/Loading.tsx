@@ -27,15 +27,15 @@ export default function Loading() {
       count++;
       setPollCount(count);
       try {
-        const res = await ordersApi.reconcile(orderId);
-        setStatus(res.status);
-        if (res.status === 'paid' || res.already || res.status === 'interpreted') {
+        // 2026-09-21：轮询订单状态，不再调爱发电 reconcile
+        const order = await ordersApi.get(orderId);
+        setStatus(order.status);
+        if (order.status === 'paid' || order.status === 'interpreted') {
           clearInterval(pollRef.current);
           navigate(`/reading/${orderId}`);
-        } else if (res.status === 'paid' && res.ai_error) {
-          // Phase 2.11: AI 失败但已付款
+        } else if (order.status === 'paid' && order.reading?.ai_error) {
           clearInterval(pollRef.current);
-          setAiError(res.ai_error);
+          setAiError(order.reading.ai_error);
         } else if (count >= 180) {
           clearInterval(pollRef.current);
           setError('轮询超时');
@@ -55,7 +55,7 @@ export default function Loading() {
         </div>
         <h3 className="font-display text-2xl text-gradient-gold mb-sm">确认支付中</h3>
         <p className="text-xs text-fg-secondary font-body italic mb-lg">
-          等待爱发电确认 · 后台每 2 秒查一次
+          等待支付确认 · 后台每 2 秒查一次
         </p>
         <div className="caps text-2xs text-fg-faint">
           状态: {status} · 第 {pollCount} 次

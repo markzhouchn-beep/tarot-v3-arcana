@@ -1,6 +1,8 @@
 // ============================================================
-// routes/membership.js · 会员订阅（创建 + 状态 + 升降级）
+// routes/membership.js · 会员状态查询 + 升降级
 // 创建：2026-09-01
+// 2026-09-21：下线爱发电订阅路径，订阅改为 admin 后台手动授予
+//            保留状态查询 / admin grant / 过期降级逻辑
 // ============================================================
 
 import { Router } from 'express';
@@ -8,7 +10,6 @@ import crypto from 'node:crypto';
 import db from '../db.js';
 import { config } from '../lib/config.js';
 import { optionalAuth, requireAuth } from '../middleware/auth.js';
-import { buildSubscriptionPayUrl, inferSubscriptionTier } from '../lib/afdian.js';
 import { getQuotaToday } from '../lib/quota.js';
 import { sendSubscriptionSuccessEmail } from '../lib/mail.js';
 
@@ -61,113 +62,22 @@ router.get('/status', optionalAuth, (req, res) => {
 
 /**
  * POST /api/membership/subscribe
- * 创建订阅订单（返爱发电支付 URL）
+ * 爱发电已下线（2026-09-21）。改为返回 410 Gone，提示用户会员功能正在重构。
  */
 router.post('/subscribe', requireAuth, (req, res) => {
-  try {
-    const { plan } = req.body || {};
-    if (!plan) {
-      return res.status(400).json({ error: 'MISSING_PLAN' });
-    }
-
-    const planIdMap = {
-      silver_monthly: config.AFDIAN_PLAN_SILVER_MONTHLY,
-      silver_yearly: config.AFDIAN_PLAN_SILVER_YEARLY,
-      gold_monthly: config.AFDIAN_PLAN_GOLD_MONTHLY,
-      gold_yearly: config.AFDIAN_PLAN_GOLD_YEARLY,
-    };
-
-    const planId = planIdMap[plan];
-    if (!planId) {
-      return res.status(400).json({ error: 'INVALID_PLAN', message: `不支持的订阅方案: ${plan}` });
-    }
-
-    const inferred = inferSubscriptionTier(plan);
-    if (!inferred) {
-      return res.status(400).json({ error: 'INVALID_PLAN' });
-    }
-
-    // 订阅场景 custom_order_id = user_id
-    const payUrl = buildSubscriptionPayUrl(planId, req.user.id);
-
-    res.json({
-      ok: true,
-      planId,
-      tier: inferred.tier,
-      afdianPayUrl: payUrl,
-    });
-  } catch (err) {
-    console.error('[membership] subscribe error:', err);
-    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
-  }
+  res.status(410).json({
+    error: 'SUBSCRIPTION_DISABLED',
+    message: '会员订阅功能正在重构，暂未开放。如需开通会员请联系客服或关注产品更新。',
+  });
 });
 
 /**
- * 内部：处理订阅 webhook 命中（webhook 调用）
+ * 内部：处理订阅 webhook 命中（已下线，保留占位）
+ * 实际授予由 admin 后台 POST /api/admin/users/:id/tier 完成
  */
 export async function activateSubscription({ userId, planId, outTradeNo, amount, payMonth }) {
-  try {
-    const inferred = inferSubscriptionTier(planId);
-    if (!inferred) return { ok: false, error: 'unknown_plan' };
-
-    const subId = crypto.randomUUID();
-    const now = Date.now();
-    const expiresAt = now + payMonth * 30 * 24 * 3600 * 1000;
-
-    // 1. 重订/升级防御：先把该用户所有 active 订阅标记为 expired
-    //    保留历史记录（不删除），避免 tier 与多 active 订阅冲突
-    //    原 expires_at 保留作为历史到期时间，updated_at 标记被替换
-    const existingActive = db.prepare(`
-      SELECT id, afdian_plan_id, tier, pay_month, expires_at
-      FROM user_subscriptions
-      WHERE user_id = ? AND status = 'active'
-      ORDER BY expires_at DESC
-    `).all(userId);
-
-    let expiredOldCount = 0;
-    if (existingActive.length > 0) {
-      const expireStmt = db.prepare(`
-        UPDATE user_subscriptions
-        SET status = 'expired', updated_at = ?
-        WHERE id = ?
-      `);
-      for (const old of existingActive) {
-        expireStmt.run(now, old.id);
-        expiredOldCount++;
-        console.log(`[membership] ⏳ 旧订阅过期: user=${userId}, plan=${old.afdian_plan_id}, tier=${old.tier}, 原到期=${new Date(old.expires_at).toISOString()}`);
-      }
-    }
-
-    // 2. INSERT 新订阅（active）
-    db.prepare(`
-      INSERT INTO user_subscriptions (
-        id, user_id, afdian_plan_id, tier, pay_month, amount,
-        started_at, expires_at, status, afdian_out_trade_no, created_at, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
-    `).run(subId, userId, planId, inferred.tier, payMonth, amount, now, expiresAt, outTradeNo, now, now);
-
-    // 3. 更新用户 tier（永远是最新订阅的 tier）
-    db.prepare(`UPDATE users SET tier = ? WHERE id = ?`).run(inferred.tier, userId);
-
-    console.log(`[membership] ✅ subscription activated: user=${userId}, tier=${inferred.tier}, plan=${planId}, expires=${new Date(expiresAt).toISOString()}, 替换旧订阅=${expiredOldCount}`);
-
-    // 4. 发订阅成功邮件（不阻塞主流程）
-    const user = db.prepare(`SELECT email, nickname FROM users WHERE id = ?`).get(userId);
-    if (user?.email) {
-      sendSubscriptionSuccessEmail({
-        userEmail: user.email,
-        userNickname: user.nickname,
-        tier: inferred.tier,
-        expiresAt,
-      }).catch((err) => console.error('[membership] 发订阅成功邮件失败:', err));
-    }
-
-    return { ok: true, subId, expiresAt, expiredOld: expiredOldCount };
-  } catch (err) {
-    console.error('[membership] activateSubscription error:', err);
-    return { ok: false, error: err.message };
-  }
+  console.warn('[membership] activateSubscription called but afdian disabled — noop');
+  return { ok: false, error: 'afdian_disabled' };
 }
 
 /**
@@ -181,7 +91,6 @@ export function expireDueSubscriptions() {
     WHERE status = 'active' AND expires_at < ?
   `).run(now, now);
 
-  // 更新对应用户 tier 为 registered
   if (expired.changes > 0) {
     db.prepare(`
       UPDATE users SET tier = 'registered'

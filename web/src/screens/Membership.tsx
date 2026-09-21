@@ -1,6 +1,7 @@
 // ============================================================
 // screens/Membership.tsx · /membership — 会员中心
-// Phase 1.6
+// 2026-09-21：爱发电已下线，会员订阅入口改为"敬请期待"
+//            会员权益保留展示（admin 后台仍可手动授予）
 // ============================================================
 
 import { useEffect, useState } from 'react';
@@ -8,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { Button } from '../components/Button';
-import { membershipApi, authApi, ordersApi } from '../lib/api';
+import { membershipApi, authApi } from '../lib/api';
 
 interface MembershipStatus {
   tier: 'guest' | 'registered' | 'silver' | 'gold';
@@ -29,8 +30,6 @@ const TIERS = [
       '银月专属牌阵（5 张阵）',
       '5 次追问 / 月',
     ],
-    planMonthly: 'AFDIAN_PLAN_SILVER_MONTHLY',
-    planYearly: 'AFDIAN_PLAN_SILVER_YEARLY',
   },
   {
     id: 'gold',
@@ -44,8 +43,6 @@ const TIERS = [
       '无限追问',
       '每月 3 次免费重抽',
     ],
-    planMonthly: 'AFDIAN_PLAN_GOLD_MONTHLY',
-    planYearly: 'AFDIAN_PLAN_GOLD_YEARLY',
   },
 ];
 
@@ -103,45 +100,22 @@ export default function Membership() {
         )}
       </div>
 
-      {/* 套餐列表 */}
+      {/* 2026-09-21：爱发电下线提示 */}
+      <div className="panel p-lg mb-xl border-warning/40 bg-warning/5">
+        <div className="text-center mb-md">
+          <div className="text-2xl mb-xs">⏳</div>
+          <h3 className="font-display text-lg text-gradient-gold mb-xs">会员订阅功能升级中</h3>
+          <p className="text-xs text-fg-secondary font-body">
+            我们正在为会员订阅接入支付宝 + PayPal 直接支付。<br />
+            升级期间可继续享受会员权益，详情请联系客服。
+          </p>
+        </div>
+      </div>
+
+      {/* 套餐列表（展示但不可订阅） */}
       <div className="space-y-md">
         {TIERS.map(tier => (
-          <TierCard
-            key={tier.id}
-            tier={tier}
-            current={currentTier === tier.id}
-            onSubscribe={async (plan) => {
-              try {
-                const me = await authApi.me();
-                if (!me?.user?.id) {
-                  navigate('/auth');
-                  return;
-                }
-                const planKey = `${tier.id}_${plan === 'monthly' ? 'monthly' : 'yearly'}`;
-                const res = await membershipApi.subscribe(planKey);
-                if (res?.afdianPayUrl) {
-                  // 同步跳转爱发电支付
-                  setTimeout(() => { window.location.href = res.afdianPayUrl; }, 300);
-                } else {
-                  alert('订阅创建失败：未返回支付链接');
-                }
-              } catch (err) {
-                const msg = err instanceof Error ? err.message : String(err);
-                if (
-                  msg.includes('401') ||
-                  msg.includes('LOGIN_REQUIRED') ||
-                  msg.includes('SESSION_EXPIRED') ||
-                  msg.includes('UNAUTHORIZED') ||
-                  msg.includes('请先登录') ||
-                  msg.includes('会话已过期')
-                ) {
-                  navigate('/auth');
-                  return;
-                }
-                alert(`订阅失败：${msg}`);
-              }
-            }}
-          />
+          <TierCard key={tier.id} tier={tier} current={currentTier === tier.id} />
         ))}
       </div>
 
@@ -207,11 +181,8 @@ export default function Membership() {
         </div>
       </div>
 
-      {/* 信任 + 单次备选 */}
+      {/* 单次备选 */}
       <div className="mt-xl text-center space-y-sm">
-        <p className="text-xxs text-fg-faint">
-          🛡️ 由爱发电 afdian.net 担保支付 · 微信 / 支付宝均可
-        </p>
         <p className="text-xxs text-fg-faint">
           不想开会员？<button onClick={() => navigate('/spreads')} className="text-primary hover:text-primary-light underline">单次解读 ¥1 起 →</button>
         </p>
@@ -223,14 +194,12 @@ export default function Membership() {
 function TierCard({
   tier,
   current,
-  onSubscribe,
 }: {
   tier: typeof TIERS[0];
   current: boolean;
-  onSubscribe: (plan: 'monthly' | 'yearly') => void;
 }) {
   return (
-    <div className={`panel p-lg ${current ? 'border-primary/60 bg-primary/5' : ''}`}>
+    <div className={`panel p-lg ${current ? 'border-primary/60 bg-primary/5' : 'opacity-60'}`}>
       <div className="flex items-center gap-sm mb-md">
         <div className="text-3xl">{tier.icon}</div>
         <div>
@@ -246,11 +215,11 @@ function TierCard({
       </ul>
 
       <div className="flex gap-md">
-        <Button onClick={() => onSubscribe('monthly')} variant="secondary" size="md" fullWidth>
-          ¥{tier.monthly}/月
+        <Button variant="secondary" size="md" fullWidth disabled>
+          ¥{tier.monthly}/月（暂不可订阅）
         </Button>
-        <Button onClick={() => onSubscribe('yearly')} variant="primary" size="md" fullWidth>
-          ¥{tier.yearly}/年 省 ¥{tier.monthly * 12 - tier.yearly}
+        <Button variant="secondary" size="md" fullWidth disabled>
+          ¥{tier.yearly}/年（暂不可订阅）
         </Button>
       </div>
     </div>

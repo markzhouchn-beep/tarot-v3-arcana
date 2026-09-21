@@ -9,7 +9,6 @@ import db from '../db.js';
 import { config } from '../lib/config.js';
 import { optionalAuth, requireAuth } from '../middleware/auth.js';
 import { trackEvent } from '../lib/events.js';
-import { queryOrder } from '../lib/afdian.js';
 import { createPaypalOrder } from '../lib/paypal.js';
 import { drawCards } from '../lib/tarot-knowledge.js';
 import { callAI } from '../lib/ai.js';
@@ -27,21 +26,19 @@ router.post('/create', optionalAuth, async (req, res) => {
   try {
     const { spread_type, spread_theme, question, tier = 'classic', device_id, payment_method = 'paypal' } = req.body || {};
 
-    // 价格映射（统一 key：'single' / 'three' / 'ten'，front 贺 v2.0 lite/classic/deep 都接受）
+    // 价格映射（统一 key：'single' / 'three' / 'ten'，兼容 v2.0 lite/classic/deep）
     const PRICE_MAP = {
-      // v3.0 前端 tier 值
-      single: { amount: config.PRICE_SINGLE, planId: config.AFDIAN_PLAN_SINGLE, skuId: config.AFDIAN_SKU_ID_SINGLE },
-      three: { amount: config.PRICE_THREE, planId: config.AFDIAN_PLAN_THREE, skuId: config.AFDIAN_SKU_ID_THREE },
-      ten: { amount: config.PRICE_TEN, planId: config.AFDIAN_PLAN_TEN, skuId: config.AFDIAN_SKU_ID_TEN },
-      // v2.0 兼容
-      lite: { amount: config.PRICE_SINGLE, planId: config.AFDIAN_PLAN_SINGLE, skuId: config.AFDIAN_SKU_ID_SINGLE },
-      classic: { amount: config.PRICE_THREE, planId: config.AFDIAN_PLAN_THREE, skuId: config.AFDIAN_SKU_ID_THREE },
-      deep: { amount: config.PRICE_TEN, planId: config.AFDIAN_PLAN_TEN, skuId: config.AFDIAN_SKU_ID_TEN },
+      single: { amount: config.PRICE_SINGLE },
+      three: { amount: config.PRICE_THREE },
+      ten: { amount: config.PRICE_TEN },
+      lite: { amount: config.PRICE_SINGLE },
+      classic: { amount: config.PRICE_THREE },
+      deep: { amount: config.PRICE_TEN },
     };
     const tierInfo = PRICE_MAP[tier] || PRICE_MAP.classic;
     const amount = tierInfo.amount;
-    const planId = tierInfo.planId || null;
-    const skuId = tierInfo.skuId || null;
+    const planId = null;
+    const skuId = null;
 
     // 牌张数推算
     // 原则：优先用 spread_type 对应的牌阵定义里的 cards 字段；
@@ -388,7 +385,8 @@ function extractSummary(sections) {
 
 /**
  * POST /api/orders/:id/reconcile
- * 客户端主动触发 reconcile（不跳过校验！）
+ * 爱发电已下线（2026-09-21）。客户端主动 reconcile 改为返 410 Gone。
+ * 用户支付状态以支付宝 notify / PayPal webhook 为准，无需客户端主动 reconcile。
  */
 router.post('/:id/reconcile', async (req, res) => {
   try {
@@ -400,70 +398,11 @@ router.post('/:id/reconcile', async (req, res) => {
       // 已付款，但可能 AI 失败（ai_error 有值）
       return res.json({ ok: true, status: order.status, already: true, ai_error: order.ai_error || null });
     }
-    if (!order.afdian_out_trade_no) {
-      return res.status(400).json({
-        ok: false,
-        status: 'no_out_trade_no',
-        message: '订单无爱发电 out_trade_no',
-      });
-    }
-
-    // v3.0.1：真调爱发电 query-order 查单
-    // ⚠️ 实测：爱发电 out_trade_no 参数查询不稳，需拉 page=1 手动过滤
-    console.log(`[reconcile] 查单: out_trade_no=${order.afdian_out_trade_no}`);
-    const result = await queryOrder({ page: 1, perPage: 100 });
-    const list = result.list || [];
-
-    // 优先按 out_trade_no 精确匹配，其次 custom_order_id
-    const afdianOrder = list.find(
-      (o) => o.out_trade_no === order.afdian_out_trade_no ||
-             o.custom_order_id === order.id
-    );
-
-    if (!afdianOrder) {
-      return res.json({
-        ok: false,
-        status: 'still_pending',
-        message: `爱发电未查询到该订单（查了 ${list.length} 条，均不匹配）`,
-      });
-    }
-
-    // 命中 → 检查 status=2 已支付
-    const afdianStatus = afdianOrder.status;
-    if (afdianStatus !== 2) {
-      return res.json({
-        ok: false,
-        status: 'still_pending',
-        message: `爱发电订单状态 = ${afdianStatus}（2=已付）`,
-      });
-    }
-
-    // 防篡改：金额差异超过 0.01 报警（但仍处理：可能是优惠券）
-    const paidAmount = parseFloat(afdianOrder.total_amount);
-    if (Math.abs(paidAmount - order.amount) > 0.01) {
-      console.warn(`[reconcile] ⚠️ 金额不匹配: order=${order.amount}, afdian=${paidAmount}`);
-    }
-
-    // 命中且已付 → 标 paid + 异步触发 AI 解读
-    db.prepare(`UPDATE orders SET status = 'paid', paid_at = ?, paid_amount = ? WHERE id = ?`).run(
-      Date.now(), paidAmount, order.id
-    );
-    triggerAIReading(order.id).catch((err) => console.error('[reconcile] trigger error:', err));
-
-    console.log(`[reconcile] ✅ 命中: order=${order.id}, amount=${paidAmount}`);
-
-    // 埋点：订单支付
-    trackEvent('order_paid', {
-      userId: order.user_id,
-      deviceId: order.device_id,
-      properties: { order_id: order.id, amount: paidAmount, source: 'reconcile' },
-    });
-
+    // 仍在 pending：提示用户走支付宝/PayPal 的 return 自动刷新
     return res.json({
-      ok: true,
-      status: 'paid',
-      paid_amount: paidAmount,
-      afdian_order: afdianOrder,
+      ok: false,
+      status: 'still_pending',
+      message: '订单仍在等待支付回调，请确认支付完成后刷新页面（支付宝/PayPal 同步通知会自动激活订单）',
     });
   } catch (err) {
     console.error('[orders] reconcile error:', err);
@@ -472,7 +411,7 @@ router.post('/:id/reconcile', async (req, res) => {
 });
 
 /**
- * 内部：触发 AI 解读（webhook / reconcile 命中后调用）
+ * 内部：触发 AI 解读（webhook 命中后调用）
  * Phase 0 占位，Phase 1 充实
  */
 export async function triggerAIReading(orderId) {

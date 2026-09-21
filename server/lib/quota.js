@@ -7,7 +7,6 @@
 import db from '../db.js';
 import crypto from 'node:crypto';
 import { config } from './config.js';
-import { queryOrder } from './afdian.js';
 
 // 各等级配额限制
 export const QUOTA_LIMITS = {
@@ -157,16 +156,8 @@ async function reconcileLoop() {
 
 async function reconcileSingleOrder(order) {
   try {
-    // 1. 查爱发电订单列表（最近 50 条），按 out_trade_no / custom_order_id 匹配
-    const result = await queryOrder({ page: 1, perPage: 100 });
-    const list = result.list || [];
-    const hit = list.find(
-      (o) =>
-        (order.afdian_out_trade_no && o.out_trade_no === order.afdian_out_trade_no) ||
-        o.custom_order_id === order.id
-    );
-
-    if (!hit) return { ok: false, reason: 'not_found' };
+    // 爱发电已下线（2026-09-21）。该函数不再有效，保留占位避免 break。
+    return { ok: false, reason: 'afdian_disabled' };
     // status: 2=paid
     if (hit.status !== 2) return { ok: false, reason: `status=${hit.status}` };
 
