@@ -86,32 +86,10 @@ const SAMPLE_QUESTIONS: SampleQuestion[] = [
 
 export default function Hero() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    authApi.me().then(d => setUser(d.user)).catch(() => {});
-  }, []);
 
   return (
     <Layout orbs size="md">
-      {/* 屏顶 · 登录 / 会员入口 */}
-      <div className="flex justify-end mb-xl">
-        {user ? (
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="caps text-fg-secondary hover:text-primary"
-          >
-            {user.nickname || user.email?.split('@')[0] || '我的'}
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate('/auth')}
-            className="caps text-fg-secondary hover:text-primary"
-          >
-            登录 / 注册
-          </button>
-        )}
-      </div>
+      {/* 2026-09-21：右上角登录入口由 Layout 内 UserMenu 提供，去掉 Hero 内的重复按钮 */}
 
       {/* 品牌 */}
       <header className="text-center mb-2xl animate-fade-in">
@@ -198,7 +176,7 @@ export default function Hero() {
           {SAMPLE_QUESTIONS.map((q) => (
             <button
               key={q.id}
-              onClick={() => navigate(`/yes-no?question=${encodeURIComponent(q.question)}`)}
+              onClick={() => navigate(`/yes-no?question=${encodeURIComponent(q.question)}&quick=1`)}
               className="w-full panel p-md text-left transition-all duration-fast hover:border-primary hover:shadow-glow-gold group"
             >
               <div className="flex items-start gap-md">
@@ -213,7 +191,7 @@ export default function Hero() {
                   <div className="flex items-center justify-between mt-2">
                     <span className="caps text-2xs text-fg-faint">{q.card}</span>
                     <span className="text-xxs text-primary opacity-0 group-hover:opacity-100 transition">
-                      我也想问问 →
+                      立即抽牌 →
                     </span>
                   </div>
                 </div>

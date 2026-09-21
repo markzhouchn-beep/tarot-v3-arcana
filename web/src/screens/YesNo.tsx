@@ -55,6 +55,7 @@ export default function YesNo() {
   const [result, setResult] = useState<DrawResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoDrawn, setAutoDrawn] = useState(false);
 
   useEffect(() => {
     refreshQuota();
@@ -68,12 +69,16 @@ export default function YesNo() {
     if (q) setQuestion(q);
   }, [searchParams]);
 
-  // quick=1：首页直接进入，只预填问题，不自动抽牌，等用户点按钮
+  // 2026-09-21 v1.1.11：quick=1 预填问题并自动抽牌（不替换用户传入的问题）
   useEffect(() => {
-    if (searchParams.get('quick') === '1' && !result && !loading) {
-      setQuestion('我接下来需要注意什么？');
+    if (searchParams.get('quick') === '1' && !result && !loading && !autoDrawn) {
+      const q = searchParams.get('question') || '我接下来需要注意什么？';
+      setQuestion(q);
+      // 自动触发抽牌（next tick，等 quota 加载完成）
+      setAutoDrawn(true);
+      setTimeout(() => handleDraw(q), 600);
     }
-  }, []);
+  }, [quota]);
 
   const refreshQuota = () => {
     yesNoApi.quota(deviceId)

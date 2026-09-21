@@ -94,7 +94,6 @@ export default function Spread() {
           });
       };
       tryReconcile();
-        .catch(() => {});
     }
   }, [id]);
 
