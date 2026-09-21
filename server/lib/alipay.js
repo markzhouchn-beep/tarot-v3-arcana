@@ -43,10 +43,14 @@ export function sign(params, privateKey) {
   const sortedKeys = Object.keys(filtered).sort();
   // 3. 拼接 k=v&k=v
   const signStr = sortedKeys.map((k) => `${k}=${filtered[k]}`).join('&');
+  // [DEBUG] 临时调试：输出签名串
+  console.log('[alipay DEBUG] sign string:', signStr);
+  console.log('[alipay DEBUG] sign string length:', signStr.length);
   // 4. 用应用私钥签名（PKCS#1 v1.5 with SHA-256）
   const signer = crypto.createSign('RSA-SHA256');
   signer.update(signStr, CHARSET);
   const sig = signer.sign(privateKey, 'base64');
+  console.log('[alipay DEBUG] signature:', sig);
   return sig;
 }
 
