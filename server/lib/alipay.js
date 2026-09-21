@@ -149,6 +149,68 @@ export function createWapPay({
 }
 
 // ============================================================
+// 3b. 构造支付跳转 HTML 表单（v3.0.5：避免浏览器 GET URL 长度截断）
+// ============================================================
+/**
+ * 创建手机网站支付订单，返回 HTML 表单（POST 自动提交）
+ *
+ * 为什么不用 createWapPay 返回的 GET URL：
+ * - payUrl 约 935+ 字符（全是 query 参数）
+ * - 浏览器对 location.href 导航有 2k–8k 长度限制，超长会**静默截断**
+ * - 截断后支付宝收到的参数残缺 → 验签字符串对不上 → invalid-signature
+ * - curl 测试永远复现不出来（curl 不受浏览器导航长度限制）
+ *
+ * 官方推荐：wap.pay 用 POST（form 自动提交），GET 只是备选。
+ *
+ * @returns {string} HTML 字符串（form + 自动提交 script）
+ */
+export function createWapPayForm({
+  outTradeNo,
+  totalAmount,
+  subject,
+  appId,
+  privateKey,
+  notifyUrl,
+  returnUrl,
+  sandbox = false,
+}) {
+  const gateway = sandbox ? GATEWAY_SANDBOX : GATEWAY_PROD;
+  const common = {
+    app_id: appId,
+    method: 'alipay.trade.wap.pay',
+    charset: CHARSET,
+    sign_type: SIGN_TYPE,
+    timestamp: formatTimestamp(new Date()),
+    version: '1.0',
+    notify_url: notifyUrl,
+    return_url: returnUrl,
+  };
+  const bizContent = JSON.stringify({
+    out_trade_no: outTradeNo,
+    total_amount: Number(totalAmount).toFixed(2),
+    subject,
+    product_code: 'QUICK_WAP_WAY',
+    timeout_express: '15m',
+  });
+  const params = { ...common, biz_content: bizContent };
+  params.sign = sign(params, privateKey);
+
+  // 用 hidden input 提交，浏览器 POST 时无长度限制
+  const inputs = Object.entries(params)
+    .map(([k, v]) => {
+      const safeKey = String(k).replace(/[<>"]/g, '');
+      const safeVal = String(v).replace(/[<>"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      return `<input type="hidden" name="${safeKey}" value="${safeVal}" />`;
+    })
+    .join('\n');
+
+  // 返回纯 HTML（含自动提交脚本），前端注入到 body 即可
+  return `<form id="__alipay_form" action="${gateway}" method="post" accept-charset="UTF-8" style="display:none">\n${inputs}
+</form>
+<script>document.getElementById('__alipay_form').submit();</script>`;
+}
+
+// ============================================================
 // 4. 查询订单（异步通知兜底 / 用户点击"我已支付"按钮时调）
 // ============================================================
 /**

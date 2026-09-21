@@ -127,15 +127,23 @@ export default function Spread() {
     }
   };
 
-  // 跳 PayPal 收银台
+  // 跳支付收银台
   const handlePay = () => {
     if (!order) return;
+    // v3.0.5：支付宝用服务端返回的 HTML form（POST 提交），避免浏览器对长 GET URL 静默截断
+    if (order.payment_method === 'alipay' && order.payForm) {
+      // 注入 form 到 body 并自动提交
+      const container = document.createElement('div');
+      container.innerHTML = order.payForm;
+      document.body.appendChild(container);
+      return;
+    }
+    // PayPal：跳转 approval URL，付款后会回跳 /paypal/return
     const payUrl = order.payUrl;
     if (!payUrl) {
       setError('支付链接未生成，请刷新页面重试');
       return;
     }
-    // 直接跳转，PayPal 付款后会回跳 /paypal/return，然后 redirect 回这里
     window.location.href = payUrl;
   };
 

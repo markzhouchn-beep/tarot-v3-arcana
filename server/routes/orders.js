@@ -168,6 +168,7 @@ router.post('/create', optionalAuth, async (req, res) => {
 
     // 支付 URL：会员/首单免费时不需要
     let payUrl = null;
+    let payForm = null; // v3.0.5：支付宝 HTML form（POST）
     if (!isMember && !isFreeFirst) {
       if (payment_method === 'paypal' && config.PAYPAL_CLIENT_ID && amount > 0) {
         try {
@@ -190,7 +191,7 @@ router.post('/create', optionalAuth, async (req, res) => {
       } else if (payment_method === 'alipay' && config.ALIPAY_APP_ID && amount > 0) {
         // 支付宝手机网站支付（固定 CNY，不做货币换算）
         try {
-          const { createWapPay, normalizePrivateKey } = await import('../lib/alipay.js');
+          const { createWapPayForm, normalizePrivateKey } = await import('../lib/alipay.js');
           const privateKey = normalizePrivateKey(config.ALIPAY_PRIVATE_KEY);
           const tierName = tier === 'single' ? '单张牌阵' : tier === 'three' ? '三张牌阵' : '十张牌阵';
           const subject = `ARCANA ai · ${tierName}`;
@@ -199,7 +200,8 @@ router.post('/create', optionalAuth, async (req, res) => {
           const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
           const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
           const returnUrl = `${proto}://${host}/?pay_method=alipay`;
-          payUrl = createWapPay({
+          // v3.0.5：返回 HTML form（POST），避免浏览器对长 GET URL 静默截断
+          payForm = createWapPayForm({
             outTradeNo,
             totalAmount: amount,
             subject,
@@ -223,6 +225,7 @@ router.post('/create', optionalAuth, async (req, res) => {
       amount: finalAmount,
       originalAmount: amount,
       payUrl,
+      payForm, // v3.0.5：支付宝 HTML form（POST 提交，避免浏览器截断）
       paymentMethod: payment_method,
       isTest,
       isMember,
@@ -258,6 +261,7 @@ router.get('/:id', async (req, res) => {
     // v3.0.4：pending 订单按 payment_method 重新生成 payUrl
     // （DB 不存 payUrl，避免旧签名 sessionStorage 缓存导致 invalid-signature）
     let payUrl = null;
+    let payForm = null; // v3.0.5：支付宝 HTML form（POST）
     if (order.status === 'pending' && order.amount > 0) {
       try {
         const tierName = order.tier === 'single' ? '单张牌阵' : order.tier === 'three' ? '三张牌阵' : '十张牌阵';
@@ -267,8 +271,9 @@ router.get('/:id', async (req, res) => {
         const notifyUrl = config.ALIPAY_NOTIFY_URL || `${config.DOMAIN}/api/alipay/notify`;
 
         if (order.payment_method === 'alipay' && config.ALIPAY_APP_ID) {
-          const { createWapPay, normalizePrivateKey } = await import('../lib/alipay.js');
-          payUrl = createWapPay({
+          const { createWapPayForm, normalizePrivateKey } = await import('../lib/alipay.js');
+          // v3.0.5：返回 HTML form（POST），避免浏览器对长 GET URL 静默截断
+          payForm = createWapPayForm({
             outTradeNo: order.afdian_out_trade_no,
             totalAmount: order.amount,
             subject: `ARCANA ai · ${tierName}`,
@@ -303,7 +308,8 @@ router.get('/:id', async (req, res) => {
       spread_type: order.spread_type,
       payment_method: order.payment_method,
       paypal_order_id: order.paypal_order_id || null,
-      payUrl, // v3.0.4：服务端每次返回最新签名
+      payUrl, // PayPal 用
+      payForm, // v3.0.5：支付宝 HTML form（POST）
       // v3.0.1 补充 reading
       reading: reading ? parseReading(reading.interpretation) : null,
       // v3.0.3 追问用：reading_id（OracleChat 需要）
