@@ -11,7 +11,7 @@ import { Button } from '../components/Button';
 import { authApi, invitesApi } from '../lib/api';
 
 type Action = 'login' | 'register';
-type Mode = 'code' | 'password';
+type Mode = 'code' | 'password' | 'magic';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -177,8 +177,27 @@ export default function Auth() {
     if (mode === 'code') {
       if (codeStep === 'email') sendCode();
       else verifyCode();
-    } else {
+    } else if (mode === 'password') {
       handlePassword();
+    } else if (mode === 'magic') {
+      handleMagicLink();
+    }
+  };
+
+  // Magic Link 登录：发邮件给用户，点链接登录
+  const handleMagicLink = async () => {
+    if (!email.trim()) {
+      setMessage({ text: '请输入邮箱', type: 'error' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await authApi.magicLink(email.trim(), 'login', inviteCodeFromUrl || undefined);
+      setMessage({ text: '✦ 登录链接已发到你的邮箱，请点击链接完成登录', type: 'success' });
+    } catch (err: any) {
+      setMessage({ text: err.message || '发送失败', type: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -207,27 +226,37 @@ export default function Auth() {
         </p>
       </div>
 
-      {/* 模式 Tab：验证码 / 密码（默认验证码） */}
+      {/* 模式 Tab：验证码 / 密码 / 邮件链接（默认验证码） */}
       <div className="flex gap-1 mb-lg bg-bg-occult rounded p-1">
         <button
           onClick={() => switchMode('code')}
-          className={`flex-1 py-2 text-sm rounded transition ${
+          className={`flex-1 py-2 text-xs rounded transition ${
             mode === 'code'
               ? 'bg-primary text-bg-canvas font-medium'
               : 'text-fg-secondary hover:text-fg'
           }`}
         >
-          ✦ 验证码登录
+          验证码
         </button>
         <button
           onClick={() => switchMode('password')}
-          className={`flex-1 py-2 text-sm rounded transition ${
+          className={`flex-1 py-2 text-xs rounded transition ${
             mode === 'password'
               ? 'bg-primary text-bg-canvas font-medium'
               : 'text-fg-secondary hover:text-fg'
           }`}
         >
-          密码登录
+          密码
+        </button>
+        <button
+          onClick={() => switchMode('magic')}
+          className={`flex-1 py-2 text-xs rounded transition ${
+            mode === 'magic'
+              ? 'bg-primary text-bg-canvas font-medium'
+              : 'text-fg-secondary hover:text-fg'
+          }`}
+        >
+          邮件链接
         </button>
       </div>
 
@@ -293,6 +322,27 @@ export default function Auth() {
               </div>
             </div>
           )}
+        </>
+      )}
+
+      {/* 邮件链接模式 */}
+      {mode === 'magic' && (
+        <>
+          <div className="mb-md">
+            <label className="caps block mb-xs text-fg-faint">邮箱</label>
+            <input
+              type="email"
+              className="input"
+              placeholder="your@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value.toLowerCase())}
+              onKeyDown={e => e.key === 'Enter' && handleMagicLink()}
+              autoComplete="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </div>
         </>
       )}
 
@@ -369,7 +419,9 @@ export default function Auth() {
       <Button onClick={handleSubmit} loading={loading} fullWidth size="lg">
         {mode === 'code'
           ? (codeStep === 'email' ? '发送验证码' : '验证并登录')
-          : (action === 'login' ? '登录' : '注册')}
+          : mode === 'password'
+            ? (action === 'login' ? '登录' : '注册')
+            : '发送登录链接'}
       </Button>
 
       {/* 提示 */}
@@ -377,7 +429,9 @@ export default function Auth() {
         <p className="text-xs text-fg-faint leading-relaxed">
           {mode === 'code'
             ? '验证码 10 分钟内有效 · 不需要记密码'
-            : '密码至少 8 位，须含数字和字母 · 连续 5 次错误将锁定 15 分钟'}
+            : mode === 'password'
+              ? '密码至少 8 位，须含数字和字母 · 连续 5 次错误将锁定 15 分钟'
+              : '点击发送登录链接到你的邮箱 · 15 分钟内点击即可登录 · 无需记密码'}
         </p>
       </div>
 

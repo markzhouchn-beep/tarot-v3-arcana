@@ -122,6 +122,27 @@ export default function Reading() {
           summary,
         }, template);
         const filename = `arcana-${template}-${order.id.slice(0, 8)}.png`;
+        // 2026-09-21 v1.2.2：移动端优先用 navigator.share（系统分享面板）
+        // desktop / 浏览器不支持时降级为下载
+        const shareUrl = `${window.location.origin}/reading/${order.id}`;
+        const shareTitle = `✦ 塔罗匣解读 · ${order.question.slice(0, 30)}`;
+        const shareText = `${goldenPhrase}\n${shareUrl}`;
+        if (navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: 'image/png' })] })) {
+          try {
+            const file = new File([blob], filename, { type: 'image/png' });
+            await navigator.share({ files: [file], title: shareTitle, text: shareText });
+            setSharing(false);
+            return;
+          } catch (err: any) {
+            // 用户取消分享（AbortError）不算错误
+            if (err.name === 'AbortError') {
+              setSharing(false);
+              return;
+            }
+            // 其他错误降级为下载
+            console.warn('[share] navigator.share failed, fallback to download:', err.message);
+          }
+        }
         downloadShareCard(blob, filename);
       } catch (err: any) {
         setShareError(err.message || '生成失败');
