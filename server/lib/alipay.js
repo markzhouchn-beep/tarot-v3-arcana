@@ -246,18 +246,24 @@ function parseAlipayResponse(text) {
 export function normalizePrivateKey(rawKey) {
   if (!rawKey) return rawKey;
   const trimmed = rawKey.trim();
-  // 已经是 PKCS#8（PRIVATE KEY）就直接返回
-  if (trimmed.includes('BEGIN PRIVATE KEY')) return trimmed;
-  // PKCS#1（RSA PRIVATE KEY）需要转 PKCS#8
-  if (trimmed.includes('BEGIN RSA PRIVATE KEY')) {
-    try {
-      const keyObj = crypto.createPrivateKey(trimmed);
-      return keyObj.export({ type: 'pkcs8', format: 'pem' }).toString();
-    } catch (err) {
-      console.warn('[alipay] 私钥转换失败（PKCS#1→PKCS#8）:', err.message);
-      return trimmed;
-    }
+
+  // 已有 PEM 头 → 直接返回
+  if (trimmed.includes('BEGIN PRIVATE KEY') || trimmed.includes('BEGIN RSA PRIVATE KEY')) {
+    return trimmed;
   }
+
+  // 无 PEM 头的 raw DER 内容 → 包装成标准 PEM
+  try {
+    const buf = Buffer.from(trimmed, 'base64');
+    // 简单验证：PKCS#8 DER 以 0x30 开头
+    if (buf[0] === 0x30) {
+      const lines = trimmed.match(/.{1,64}/g) || [];
+      return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----`;
+    }
+  } catch (_) {}
+
+  // 完全无法识别 → 尝试直接用（保留原样）
+  console.warn('[alipay] 私钥格式无法识别，将尝试直接使用');
   return trimmed;
 }
 
