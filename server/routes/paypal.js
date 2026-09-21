@@ -51,8 +51,8 @@ async function verifyPaypalWebhook(req) {
     return (crc ^ 0xffffffff) >>> 0;
   }
 
-  const rawBody = JSON.stringify(req.body);
-  const crc = crc32(Buffer.from(rawBody));
+  const rawBody = req.rawBody || Buffer.from(JSON.stringify(req.body));
+  const crc = crc32(rawBody);
 
   // PayPal 要求格式：transmissionId|transmissionTime|webhookId|crc32(body)
   const payload = `${transmissionId}|${transmissionTime}|${config.PAYPAL_WEBHOOK_ID}|${crc}`;
@@ -108,14 +108,16 @@ router.get('/return', async (req, res) => {
 
     // 3. 更新订单状态
     const now = Math.floor(Date.now() / 1000);
+    // 2026-09-21: 同样修复子查询引用问题
+    const orderRow = db.prepare(`SELECT amount FROM orders WHERE id = ?`).get(order.id);
     db.prepare(`
       UPDATE orders
       SET status = 'paid',
           paid_at = ?,
-          paid_amount = (SELECT amount FROM orders WHERE id = ?),
+          paid_amount = ?,
           paypal_capture_id = ?
       WHERE id = ?
-    `).run(now, order.id, captureResult.captureId, order.id);
+    `).run(now, orderRow?.amount || 0, captureResult.captureId, order.id);
 
     // 4. 生成解读（和 afdian webhook 同样的逻辑）
     await fulfillOrder(order.id);
@@ -166,11 +168,12 @@ router.post('/webhook', async (req, res) => {
   if (event_type === 'PAYMENT.CAPTURE.COMPLETED') {
     const refId = resource?.supplementary_data?.related_ids?.order_id;
     if (refId) {
-      const order = db.prepare(`SELECT id FROM orders WHERE paypal_order_id = ? AND status != 'paid'`).get(refId);
+      const order = db.prepare(`SELECT id, amount FROM orders WHERE paypal_order_id = ? AND status != 'paid'`).get(refId);
       if (order) {
         const now = Math.floor(Date.now() / 1000);
-        db.prepare(`UPDATE orders SET status='paid', paid_at=?, paypal_capture_id=?, paid_amount=(SELECT amount FROM orders WHERE id=?) WHERE id=?`)
-          .run(now, resource.id, order.id, order.id);
+        // 2026-09-21: 先查 amount 再 UPDATE，避免子查询引用被更新的表
+        db.prepare(`UPDATE orders SET status='paid', paid_at=?, paypal_capture_id=?, paid_amount=? WHERE id=?`)
+          .run(now, resource.id, order.amount, order.id);
         await fulfillOrder(order.id);
         console.log(`[paypal webhook] 收款成功: order=${order.id}`);
       }

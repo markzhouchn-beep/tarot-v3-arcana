@@ -41,6 +41,28 @@ app.set('trust proxy', 1);
 const PORT = config.PORT;
 
 // ===== 中间件 =====
+// 2026-09-21：raw body 捕获（用于 PayPal webhook 签名校验）
+// 必须在 express.json() 之前，否则 body 已被解析
+app.use((req, res, next) => {
+  if (req.path === '/api/paypal/webhook') {
+    let chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => {
+      req.rawBody = Buffer.concat(chunks);
+      // 同步把 raw body 解析成 JSON 给后续中间件用
+      try {
+        req.body = JSON.parse(req.rawBody.toString('utf8') || '{}');
+      } catch (e) {
+        req.body = {};
+      }
+      next();
+    });
+    req.on('error', next);
+  } else {
+    next();
+  }
+});
+
 app.use(cors({
   origin: (origin, cb) => {
     // 白名单支持多 origin（逗号分隔），例如：
