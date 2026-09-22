@@ -118,18 +118,16 @@ export default function Spread() {
     }
   };
 
-  // 跳支付收银台
-  const handlePay = () => {
+  // 跳支付收银台（method 由 Paywall 按钮传入，覆盖订单默认支付方式）
+  const handlePay = (method: 'alipay' | 'paypal') => {
     if (!order) return;
-    // v3.0.6：支付宝用服务端 302 重定向（浏览器跳短链 → 服务端查订单重签 → 302 到支付宝）
-    if (order.payment_method === 'alipay') {
+    if (method === 'alipay') {
       window.location.href = `/api/alipay/go?id=${order.id}`;
       return;
     }
-    // PayPal：跳转 approval URL，付款后会回跳 /paypal/return
     const payUrl = order.payUrl;
     if (!payUrl) {
-      setError('支付链接未生成，请刷新页面重试');
+      setError('PayPal 链接未就绪，请稍后重试');
       return;
     }
     window.location.href = payUrl;
@@ -293,15 +291,13 @@ function Paywall({
   orderId: string;
   amount: number;
   paymentMethod: string;
-  onPay: () => void;
+  onPay: (method: 'alipay' | 'paypal') => void;
   onReconcile: () => void;
   processing: boolean;
   polling: boolean;
   pollCount: number;
   error: string | null;
 }) {
-  const isAlipay = paymentMethod === 'alipay';
-
   return (
     <div className="panel p-lg border-primary/40 bg-bg-occult mt-xl">
       <div className="text-center mb-md">
@@ -324,10 +320,27 @@ function Paywall({
         <li>· 解读永久保存（会员后台可查）</li>
       </ul>
 
-      {/* 主按钮：根据支付方式显示 */}
-      <Button onClick={onPay} variant="primary" size="lg" fullWidth loading={processing}>
-        {isAlipay ? '🅿️ 立即解锁 · 跳转支付宝' : '💎 立即解锁 · 跳转 PayPal'}
-      </Button>
+      {/* 两个支付按钮并排 */}
+      <div className="grid grid-cols-2 gap-sm">
+        <Button
+          onClick={() => onPay('alipay')}
+          variant="primary"
+          size="md"
+          fullWidth
+          loading={processing}
+        >
+          🅿️ 支付宝
+        </Button>
+        <Button
+          onClick={() => onPay('paypal')}
+          variant="primary"
+          size="md"
+          fullWidth
+          loading={processing}
+        >
+          💎 PayPal
+        </Button>
+      </div>
 
       {/* 错误提示 */}
       {error && (
@@ -347,7 +360,7 @@ function Paywall({
       )}
 
       <div className="caps text-2xs text-fg-faint text-center mt-md">
-        安全支付 · 由 {isAlipay ? '支付宝' : 'PayPal'} 提供保障
+        安全支付 · 支付宝 / PayPal 均可
       </div>
     </div>
   );
