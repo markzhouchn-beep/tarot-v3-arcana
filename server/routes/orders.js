@@ -268,7 +268,6 @@ router.get('/:id', async (req, res) => {
         const tierName = order.tier === 'single' ? '单张牌阵' : order.tier === 'three' ? '三张牌阵' : '十张牌阵';
         const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
         const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
-        const returnUrl = `${proto}://${host}/?pay_method=${order.payment_method}`;
         const notifyUrl = config.ALIPAY_NOTIFY_URL || `${config.DOMAIN}/api/alipay/notify`;
 
         if (order.payment_method === 'alipay' && config.ALIPAY_APP_ID) {
@@ -287,11 +286,16 @@ router.get('/:id', async (req, res) => {
           });
         } else if (order.payment_method === 'paypal') {
           const { createPaypalOrder } = await import('../lib/paypal.js');
+          const { detectGeo, EXCHANGE_RATES } = await import('../lib/geo.js');
+          const geo = await detectGeo(req);
+          const currency = geo.currency || 'USD';
+          const rate = EXCHANGE_RATES[currency] || (1 / 7.2); // 兜底 CNY→USD
+          const convertedAmount = +(order.amount * rate).toFixed(2);
+          const symbol = currency === 'CNY' ? '¥' : currency === 'TWD' ? 'NT$' : currency === 'HKD' ? 'HK$' : '$';
           const tierNames = { single: '单张牌阵', three: '三张牌阵', ten: '十张牌阵' };
           const tierNameEn = order.tier === 'single' ? 'Single' : order.tier === 'three' ? 'Three-Card' : 'Ten-Card';
-          const symbol = '$';
-          const description = `Arcana AI · ${tierNames[order.tier] || tierNameEn} (${symbol}${order.amount})`;
-          const r = await createPaypalOrder(order.id, order.amount, 'USD', description);
+          const description = `Arcana AI · ${tierNames[order.tier] || tierNameEn} (${symbol}${convertedAmount})`;
+          const r = await createPaypalOrder(order.id, convertedAmount, currency, description);
           payUrl = r.approvalUrl;
         }
       } catch (err) {

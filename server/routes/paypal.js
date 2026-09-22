@@ -10,6 +10,16 @@ import db from '../db.js';
 import { config } from '../lib/config.js';
 import { capturePaypalOrder } from '../lib/paypal.js';
 
+// 延迟 import triggerAIReading 避免循环依赖
+let _triggerAIReading = null;
+async function triggerAIReading(orderId) {
+  if (!_triggerAIReading) {
+    const mod = await import('./orders.js');
+    _triggerAIReading = mod.triggerAIReading;
+  }
+  return _triggerAIReading(orderId);
+}
+
 const router = Router();
 
 // PayPal Webhook 签名验证
@@ -119,8 +129,10 @@ router.get('/return', async (req, res) => {
       WHERE id = ?
     `).run(now, orderRow?.amount || 0, captureResult.captureId, order.id);
 
-    // 4. 生成解读（与支付渠道无关）
-    await fulfillOrder(order.id);
+    // 4. 生成 AI 解读（异步，不阻塞跳转）
+    triggerAIReading(order.id).catch(err =>
+      console.error('[paypal return] AI 触发失败:', err)
+    );
 
     console.log(`[paypal] 收款成功: order=${order.id}, capture=${captureResult.captureId}`);
 
@@ -174,7 +186,9 @@ router.post('/webhook', async (req, res) => {
         // 2026-09-21: 先查 amount 再 UPDATE，避免子查询引用被更新的表
         db.prepare(`UPDATE orders SET status='paid', paid_at=?, paypal_capture_id=?, paid_amount=? WHERE id=?`)
           .run(now, resource.id, order.amount, order.id);
-        await fulfillOrder(order.id);
+        triggerAIReading(order.id).catch(err =>
+          console.error('[paypal webhook] AI 触发失败:', err)
+        );
         console.log(`[paypal webhook] 收款成功: order=${order.id}`);
       }
     }
@@ -182,38 +196,5 @@ router.post('/webhook', async (req, res) => {
 
   res.json({ received: true });
 });
-
-// ============================================================
-// fulfillOrder — 生成解读（复用 webhook 逻辑）
-// ============================================================
-async function fulfillOrder(orderId) {
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
-  if (!order) return;
-
-  // 调用者已处理 paid 状态写入，这里只负责生成 AI 解读
-  // （PayPal/Alipay return 时已在外面标了 paid）
-  const { callAI } = await import('../lib/ai.js');
-  const { buildReadingPrompt } = await import('../lib/prompts.js');
-
-  let cards = [];
-  try { cards = JSON.parse(order.cards_json || '[]'); } catch {}
-
-  const userMsg = buildReadingPrompt({
-    spreadType: order.spread_type,
-    theme: order.spread_theme,
-    question: order.question,
-    cards,
-  });
-
-  try {
-    const interpretation = await callAI(userMsg);
-    const interpretedAt = Math.floor(Date.now() / 1000);
-    db.prepare('UPDATE orders SET interpretation=?, interpreted_at=? WHERE id=?')
-      .run(interpretation, interpretedAt, orderId);
-    console.log(`[paypal] 解读生成成功: order=${orderId}`);
-  } catch (err) {
-    console.error(`[paypal] 解读生成失败: order=${orderId}:`, err.message);
-  }
-}
 
 export default router;

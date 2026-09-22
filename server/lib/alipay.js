@@ -157,7 +157,6 @@ export function createWapPay({
 export function buildReturnUrl(origin, orderId) {
   return `${origin}/spread/${orderId}`;
 }
-}
 
 // ============================================================
 // 3b. 构造支付跳转 HTML 表单（v3.0.5：避免浏览器 GET URL 长度截断）

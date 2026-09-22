@@ -42,6 +42,24 @@ try {
   }
 }
 
+// v3.1 PayPal：自动给 orders 加 paypal_order_id 字段（如没有）
+try {
+  db.exec(`ALTER TABLE orders ADD COLUMN paypal_order_id VARCHAR(64)`);
+} catch (e) {
+  if (!e.message.includes('duplicate column') && !e.message.includes('no such table')) {
+    console.warn('[db] ALTER TABLE orders (paypal_order_id):', e.message);
+  }
+}
+
+// v3.1 PayPal：自动给 orders 加 paypal_capture_id 字段（如没有）
+try {
+  db.exec(`ALTER TABLE orders ADD COLUMN paypal_capture_id VARCHAR(64)`);
+} catch (e) {
+  if (!e.message.includes('duplicate column') && !e.message.includes('no such table')) {
+    console.warn('[db] ALTER TABLE orders (paypal_capture_id):', e.message);
+  }
+}
+
 /**
  * 事务包装器（用于需要原子操作的场景）
  * @param {Function} fn - 在事务中执行的函数

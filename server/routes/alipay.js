@@ -60,7 +60,8 @@ router.post(
     const outTradeNo = params.out_trade_no;
     const tradeStatus = params.trade_status; // TRADE_SUCCESS | TRADE_FINISHED | TRADE_CLOSED
     const tradeNo = params.trade_no;          // 支付宝交易号
-    const totalAmount = parseFloat(params.total_amount);
+    const rawAmount = params.total_amount;
+    const totalAmount = parseFloat(rawAmount);
 
     if (!outTradeNo) {
       console.error('[alipay notify] 缺少 out_trade_no');
@@ -78,8 +79,8 @@ router.post(
 
     // 4. 业务处理
     if (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED') {
-      // 金额校验（容差 0.01）
-      if (Math.abs(order.amount - totalAmount) > 0.01) {
+      // 金额校验（容差 0.01）；NaN 时跳过校验避免静默放行
+      if (!isNaN(totalAmount) && Math.abs(order.amount - totalAmount) > 0.01) {
         console.error(
           `[alipay notify] 金额不符：order=${order.amount}, alipay=${totalAmount}`
         );
