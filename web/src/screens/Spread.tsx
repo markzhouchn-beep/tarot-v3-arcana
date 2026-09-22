@@ -131,18 +131,9 @@ export default function Spread() {
   // 跳支付收银台
   const handlePay = () => {
     if (!order) return;
-    // v3.0.5：支付宝用服务端返回的 HTML form（POST 提交），避免浏览器对长 GET URL 静默截断
-    if (order.payment_method === 'alipay' && order.payForm) {
-      // ⚠️ <script> 标签在 innerHTML 里不会被执行，必须手动 form.submit()
-      const container = document.createElement('div');
-      container.innerHTML = order.payForm;
-      document.body.appendChild(container);
-      const form = document.getElementById('__alipay_form') as HTMLFormElement | null;
-      if (form) {
-        form.submit();
-      } else {
-        setError('支付表单注入失败，请刷新页面重试');
-      }
+    // v3.0.6：支付宝用服务端 302 重定向（浏览器跳短链 → 服务端查订单重签 → 302 到支付宝）
+    if (order.payment_method === 'alipay') {
+      window.location.href = `/api/alipay/go?id=${order.id}`;
       return;
     }
     // PayPal：跳转 approval URL，付款后会回跳 /paypal/return

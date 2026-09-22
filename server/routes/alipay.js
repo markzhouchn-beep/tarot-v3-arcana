@@ -220,6 +220,51 @@ router.post('/query', async (req, res) => {
   }
 });
 
+// ===== v3.0.6：服务端 302 重定向（避免浏览器 GET URL 长度截断）=====
+// 浏览器跳 /api/alipay/go?id=xxx（短 URL）→ 服务端查订单 → 重新签名 → 302 到支付宝
+router.get('/go', async (req, res) => {
+  try {
+    const orderId = req.query.id;
+    if (!orderId) return res.status(400).send('missing orderId');
+
+    const order = db.prepare(
+      'SELECT id, status, tier, amount, payment_method, afdian_out_trade_no FROM orders WHERE id = ?'
+    ).get(orderId);
+    if (!order) return res.status(404).send('order not found');
+    if (order.status !== 'pending') return res.status(400).send('order not pending: ' + order.status);
+    if (order.payment_method !== 'alipay') return res.status(400).send('not alipay order');
+    if (!config.ALIPAY_APP_ID || !config.ALIPAY_PRIVATE_KEY) {
+      return res.status(500).send('alipay not configured');
+    }
+
+    const { createWapPay, normalizePrivateKey } = await import('../lib/alipay.js');
+    const privateKey = normalizePrivateKey(config.ALIPAY_PRIVATE_KEY);
+    const tierName = order.tier === 'single' ? '单张牌阵' : order.tier === 'three' ? '三张牌阵' : '十张牌阵';
+    const subject = `ARCANA ai · ${tierName}`;
+    const notifyUrl = config.ALIPAY_NOTIFY_URL || `${config.DOMAIN}/api/alipay/notify`;
+    const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
+    const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
+    const returnUrl = `${proto}://${host}/?pay_method=alipay`;
+
+    const payUrl = createWapPay({
+      outTradeNo: order.afdian_out_trade_no,
+      totalAmount: order.amount,
+      subject,
+      appId: config.ALIPAY_APP_ID,
+      privateKey,
+      notifyUrl,
+      returnUrl,
+      sandbox: String(config.ALIPAY_SANDBOX ?? '0') === '1',
+    });
+
+    console.log(`[alipay /go] 302 → ${payUrl.substring(0, 100)}...`);
+    res.redirect(302, payUrl);
+  } catch (err) {
+    console.error('[alipay /go] error:', err);
+    res.status(500).send('redirect error: ' + err.message);
+  }
+});
+
 // ===== 创建支付订单（前端调） =====
 router.post('/create', async (req, res) => {
   try {
