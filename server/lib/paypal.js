@@ -135,6 +135,9 @@ export async function createPaypalOrder(orderId, amount, currency, description) 
 export async function capturePaypalOrder(paypalOrderId) {
   const response = await paypalFetch(`/v2/checkout/orders/${paypalOrderId}/capture`, {
     method: 'POST',
+    // Prefer: return=representation 要求 PayPal 返回完整订单快照（含 purchase_units）
+    // 不加这个 header：capture 响应只有 minimal 数据，找不到 capture_id
+    headers: { 'Prefer': 'return=representation' },
   });
 
   const data = await response.json();

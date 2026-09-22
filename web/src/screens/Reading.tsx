@@ -304,6 +304,7 @@ export default function Reading() {
   }
 
   const hasReading = !!order.reading;
+  const isPending = order.status === 'pending';
 
   return (
     <Layout size="md">
@@ -340,6 +341,31 @@ export default function Reading() {
       )}
 
       {/* 解读内容 */}
+      {/* pending 状态（支付未确认）：不显示 Loading 转圈，而是给出明确提示 */}
+      {isPending && !hasReading && (
+        <div className="panel p-lg text-center border-secondary/40 bg-secondary/10">
+          <div className="text-2xl mb-sm">⏳</div>
+          <h3 className="font-display text-lg text-fg mb-sm">支付确认中</h3>
+          <p className="text-sm text-fg-secondary font-body mb-md">
+            你的付款还在等待确认。如果已经完成支付，请稍后刷新页面。
+          </p>
+          <div className="flex gap-sm justify-center flex-wrap">
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-secondary"
+            >
+              刷新页面
+            </button>
+            <button
+              onClick={() => navigate(`/spread/${id}`)}
+              className="btn-ghost text-sm"
+            >
+              返回牌阵
+            </button>
+          </div>
+        </div>
+      )}
+
       {hasReading ? (
         <div className="space-y-lg animate-fade-in">
           {/* 3 段结构 */}
@@ -575,14 +601,14 @@ export default function Reading() {
             </Button>
           </div>
         </div>
-      ) : (
-        // Loading 状态
+      ) : !isPending ? (
+        // Loading 状态（仅非 pending 时展示；pending 由上面的专属面板处理）
         <LoadingInterpretation
           interpreting={interpreting}
           pollCount={pollCount}
           cardCount={order.cards.length}
         />
-      )}
+      ) : null}
     </Layout>
   );
 }
