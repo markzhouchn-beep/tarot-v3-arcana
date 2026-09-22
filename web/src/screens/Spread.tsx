@@ -19,6 +19,7 @@ interface Order {
   spread_type: string;
   spread_name?: string;
   payUrl?: string;
+  payForm?: string; // v3.0.5：支付宝 HTML form（POST 提交）
   payment_method?: string;
   cards: Array<{
     id: string;
@@ -132,10 +133,16 @@ export default function Spread() {
     if (!order) return;
     // v3.0.5：支付宝用服务端返回的 HTML form（POST 提交），避免浏览器对长 GET URL 静默截断
     if (order.payment_method === 'alipay' && order.payForm) {
-      // 注入 form 到 body 并自动提交
+      // ⚠️ <script> 标签在 innerHTML 里不会被执行，必须手动 form.submit()
       const container = document.createElement('div');
       container.innerHTML = order.payForm;
       document.body.appendChild(container);
+      const form = document.getElementById('__alipay_form') as HTMLFormElement | null;
+      if (form) {
+        form.submit();
+      } else {
+        setError('支付表单注入失败，请刷新页面重试');
+      }
       return;
     }
     // PayPal：跳转 approval URL，付款后会回跳 /paypal/return
