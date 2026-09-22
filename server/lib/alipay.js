@@ -43,7 +43,9 @@ export function sign(params, privateKey) {
   const sortedKeys = Object.keys(filtered).sort();
   // 3. 拼接 k=v&k=v
   const signStr = sortedKeys.map((k) => `${k}=${filtered[k]}`).join('&');
-  // 4. 用应用私钥签名（PKCS#1 v1.5 with SHA-256）
+  // 4. 用应用私钥签名
+  //    - PKCS#8 PEM → crypto 自动识别
+  //    - PKCS#1 base64（无 PEM 头）→ Node createSign 原生支持 PKCS#1 DER，直接用
   const signer = crypto.createSign('RSA-SHA256');
   signer.update(signStr, CHARSET);
   const sig = signer.sign(privateKey, 'base64');
@@ -313,65 +315,31 @@ function parseAlipayResponse(text) {
 // 5. 处理 PEM 格式（用户可能给 BEGIN RSA PRIVATE KEY 或 BEGIN PRIVATE KEY）
 // ============================================================
 /**
- * 标准化私钥（统一 PKCS#1/PKCS#8 → PKCS#8 PEM，OpenSSL 3 / Node 20 兼容）
+ * 标准化私钥：剥掉 PEM 头尾，返回原始 base64 字符串（PKCS#1 DER）
  *
- * Node 20 内置 OpenSSL 3，crypto.sign()/verify() 不接受 PKCS#1 PEM。
- * 必须统一转换为 PKCS#8 PEM（BEGIN PRIVATE KEY）。
+ * Node 20 的 createSign() 原生支持 PKCS#1 DER buffer，直接喂 base64 字符串即可。
+ * 不需要转 PKCS#8，也不需要加 PEM 头。
  */
 export function normalizePrivateKey(rawKey) {
   if (!rawKey) return rawKey;
   const trimmed = rawKey.trim();
 
-  // 已有 PKCS#8 PEM 头 → 直接用
+  // 已有 PKCS#8 PEM → 直接返回（createSign 认）
   if (trimmed.includes('BEGIN PRIVATE KEY')) {
     return trimmed;
   }
 
-  // 已有 PKCS#1 PEM 头 → 用 Node crypto 转为 PKCS#8
+  // 已有 PKCS#1 PEM → 剥掉头尾，返回纯 base64（createSign 原生支持 PKCS#1 DER）
   if (trimmed.includes('BEGIN RSA PRIVATE KEY')) {
-    try {
-      const pem = trimmed.includes('\n') ? trimmed
-        : `-----BEGIN RSA PRIVATE KEY-----\n${trimmed.match(/.{1,64}/g)?.join('\n') || trimmed}\n-----END RSA PRIVATE KEY-----`;
-      const pkcs8 = crypto.createPrivateKey({ key: pem, format: 'pem', type: 'pkcs1' });
-      return pkcs8.export({ type: 'pkcs8' }).toString('ascii');
-    } catch (err) {
-      console.warn('[alipay] PKCS#1 PEM→PKCS#8 转换失败:', err.message);
-      return trimmed;
-    }
+    const b64 = trimmed
+      .replace(/-----BEGIN RSA PRIVATE KEY-----/, '')
+      .replace(/-----END RSA PRIVATE KEY-----/, '')
+      .replace(/\s/g, '');
+    return b64;
   }
 
-  // 无 PEM 头 → base64 DER
-  try {
-    const buf = Buffer.from(trimmed, 'base64');
-    if (buf[0] !== 0x30) {
-      console.warn('[alipay] 私钥不是 DER，直接使用');
-      return trimmed;
-    }
-    let offset = 1;
-    if (buf[offset] >= 0x80) offset += 1 + (buf[offset] & 0x7f);
-    else offset += 1;
-    const next = buf[offset];
-    if (next === 0x30) {
-      // PKCS#8 DER → 包装 PEM
-      const b64 = trimmed.match(/.{1,64}/g)?.join('\n') || trimmed;
-      return `-----BEGIN PRIVATE KEY-----\n${b64}\n-----END PRIVATE KEY-----`;
-    }
-    // PKCS#1 DER → 转 PKCS#8 PEM
-    const pem = derToPem(buf, 'RSA PRIVATE KEY');
-    const pkcs8 = crypto.createPrivateKey({ key: pem, format: 'pem', type: 'pkcs1' });
-    return pkcs8.export({ type: 'pkcs8' }).toString('ascii');
-  } catch (err) {
-    console.warn('[alipay] 私钥处理失败:', err.message);
-  }
-
-  console.warn('[alipay] 私钥格式无法识别，直接使用');
+  // 无 PEM 头 → 已经是纯 base64，直接返回
   return trimmed;
-}
-
-function derToPem(der, label) {
-  const b64 = der.toString('base64');
-  const lines = b64.match(/.{1,64}/g) || [];
-  return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----`;
 }
 
 /**
