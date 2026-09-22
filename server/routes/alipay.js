@@ -18,6 +18,7 @@ import {
   queryOrder as alipayQuery,
   normalizePrivateKey,
   normalizePublicKey,
+  buildReturnUrl,
 } from '../lib/alipay.js';
 import { trackEvent } from '../lib/events.js';
 
@@ -244,7 +245,8 @@ router.get('/go', async (req, res) => {
     const notifyUrl = config.ALIPAY_NOTIFY_URL || `${config.DOMAIN}/api/alipay/notify`;
     const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
     const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
-    const returnUrl = `${proto}://${host}/?pay_method=alipay`;
+    const origin = `${proto}://${host}`;
+    const returnUrl = buildReturnUrl(origin, order.id);
 
     const payUrl = createWapPay({
       outTradeNo: order.afdian_out_trade_no,
@@ -293,7 +295,8 @@ router.post('/create', async (req, res) => {
     const notifyUrl = `${config.DOMAIN}/api/alipay/notify`;
     const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
     const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
-    const returnUrl = `${proto}://${host}/?pay_method=alipay`;
+    const origin = `${proto}://${host}`;
+    const returnUrl = buildReturnUrl(origin, orderId);
 
     const payUrl = createWapPay({
       outTradeNo: order.afdian_out_trade_no,

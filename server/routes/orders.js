@@ -191,7 +191,7 @@ router.post('/create', optionalAuth, async (req, res) => {
       } else if (payment_method === 'alipay' && config.ALIPAY_APP_ID && amount > 0) {
         // 支付宝手机网站支付（固定 CNY，不做货币换算）
         try {
-          const { createWapPayForm, normalizePrivateKey } = await import('../lib/alipay.js');
+          const { createWapPayForm, normalizePrivateKey, buildReturnUrl } = await import('../lib/alipay.js');
           const privateKey = normalizePrivateKey(config.ALIPAY_PRIVATE_KEY);
           const tierName = tier === 'single' ? '单张牌阵' : tier === 'three' ? '三张牌阵' : '十张牌阵';
           const subject = `ARCANA ai · ${tierName}`;
@@ -199,7 +199,8 @@ router.post('/create', optionalAuth, async (req, res) => {
           // 动态 returnUrl：根据请求协议决定（测试站 HTTP / 正式站 HTTPS）
           const proto = req.headers['x-forwarded-proto'] || (req.socket?.encrypted ? 'https' : 'http');
           const host = req.headers.host || config.DOMAIN?.replace(/^https?:\/\//, '');
-          const returnUrl = `${proto}://${host}/?pay_method=alipay`;
+          const origin = `${proto}://${host}`;
+          const returnUrl = buildReturnUrl(origin, orderId);
           // v3.0.5：返回 HTML form（POST），避免浏览器对长 GET URL 静默截断
           payForm = createWapPayForm({
             outTradeNo,
@@ -271,8 +272,9 @@ router.get('/:id', async (req, res) => {
         const notifyUrl = config.ALIPAY_NOTIFY_URL || `${config.DOMAIN}/api/alipay/notify`;
 
         if (order.payment_method === 'alipay' && config.ALIPAY_APP_ID) {
-          const { createWapPayForm, normalizePrivateKey } = await import('../lib/alipay.js');
+          const { createWapPayForm, normalizePrivateKey, buildReturnUrl } = await import('../lib/alipay.js');
           // v3.0.5：返回 HTML form（POST），避免浏览器对长 GET URL 静默截断
+          const origin = `${proto}://${host}`;
           payForm = createWapPayForm({
             outTradeNo: order.afdian_out_trade_no,
             totalAmount: order.amount,
@@ -280,7 +282,7 @@ router.get('/:id', async (req, res) => {
             appId: config.ALIPAY_APP_ID,
             privateKey: normalizePrivateKey(config.ALIPAY_PRIVATE_KEY),
             notifyUrl,
-            returnUrl,
+            returnUrl: buildReturnUrl(origin, order.id),
             sandbox: String(config.ALIPAY_SANDBOX ?? '0') === '1',
           });
         } else if (order.payment_method === 'paypal') {

@@ -148,6 +148,17 @@ export function createWapPay({
   return `${gateway}?${query}`;
 }
 
+/**
+ * 构造纯净 return_url（不带自定义参数）
+ * 支付宝要求：return_url 后不可带自定义参数
+ * 用订单 ID 路径传参：{origin}/spread/{orderId}
+ * 支付宝回跳时会追加 out_trade_no 等参数，不影响签名
+ */
+export function buildReturnUrl(origin, orderId) {
+  return `${origin}/spread/${orderId}`;
+}
+}
+
 // ============================================================
 // 3b. 构造支付跳转 HTML 表单（v3.0.5：避免浏览器 GET URL 长度截断）
 // ============================================================
