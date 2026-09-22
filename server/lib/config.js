@@ -32,11 +32,13 @@ export const config = {
   // FRONTEND_PRIMARY 取第一个，用于 redirect 目标
   FRONTEND_URL: str('FRONTEND_URL', 'http://localhost:5175'),
   FRONTEND_URL_LIST: (() => {
-    const raw = str('FRONTEND_URL', 'http://localhost:5175');
+    // 优先读 FRONTEND_URL_LIST（PM2 set tarot-v3-test:FRONTEND_URL_LIST ...）
+    // 兜底读 FRONTEND_URL（兼容旧格式，逗号分隔）
+    const raw = str('FRONTEND_URL_LIST', str('FRONTEND_URL', 'http://localhost:5175'));
     return raw.split(',').map(s => s.trim()).filter(Boolean);
   })(),
   FRONTEND_PRIMARY: (() => {
-    const raw = str('FRONTEND_URL', 'http://localhost:5175');
+    const raw = str('FRONTEND_URL_LIST', str('FRONTEND_URL', 'http://localhost:5175'));
     return raw.split(',')[0].trim();
   })(),
   LAN_HOST: str('LAN_HOST', '192.168.0.105'),
