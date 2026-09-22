@@ -103,14 +103,24 @@ router.post('/create', optionalAuth, async (req, res) => {
     const initialPaidAmount = (isMember || isFreeFirst) ? 0 : 0;
     const paidAt = (isMember || isFreeFirst) ? now : null;
 
+    // 注意：列顺序必须与 schema.sql 的 CREATE TABLE orders 完全一致
+    // schema: id, user_id, tier, spread_type, spread_theme, question, cards_json,
+    //   amount, status, afdian_out_trade_no, afdian_plan_id, afdian_sku_id,
+    //   paid_at, interpreted_at, is_test, device_id, payment_method,
+    //   paypal_order_id, paypal_capture_id, alipay_trade_no, paid_amount,
+    //   refunded_at, refund_reason, ai_error, created_at, updated_at
     db.prepare(`
       INSERT INTO orders (
         id, user_id, tier, spread_type, spread_theme, question, cards_json,
-        amount, status, paid_amount, payment_method,
-        afdian_out_trade_no, afdian_plan_id, afdian_sku_id, paypal_order_id,
-        is_test, device_id, created_at, updated_at, paid_at
+        amount, status,
+        afdian_out_trade_no, afdian_plan_id, afdian_sku_id,
+        paid_at, interpreted_at,
+        is_test, device_id, payment_method,
+        paypal_order_id, paypal_capture_id, alipay_trade_no, paid_amount,
+        refunded_at, refund_reason, ai_error,
+        created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       orderId,
       req.user?.id || null,
@@ -121,17 +131,40 @@ router.post('/create', optionalAuth, async (req, res) => {
       JSON.stringify(cards),
       finalAmount,
       initialStatus,
-      initialPaidAmount,
-      payment_method,
+      // afdian_out_trade_no → outTradeNo
       outTradeNo,
+      // afdian_plan_id → planId（null）
       planId,
+      // afdian_sku_id → skuId（null）
       skuId,
-      null, // paypal_order_id（后面更新）
-      isTest,
-      device_id || null,
-      now,
-      now,
+      // paid_at
       paidAt,
+      // interpreted_at（解读后更新）
+      null,
+      // is_test
+      isTest,
+      // device_id
+      device_id || null,
+      // payment_method
+      payment_method,
+      // paypal_order_id（capture 后更新）
+      null,
+      // paypal_capture_id（capture 后更新）
+      null,
+      // alipay_trade_no（notify 后更新）
+      null,
+      // paid_amount
+      initialPaidAmount,
+      // refunded_at
+      null,
+      // refund_reason
+      null,
+      // ai_error
+      null,
+      // created_at
+      now,
+      // updated_at
+      now,
     );
 
     // 埋点：订单创建
@@ -507,9 +540,11 @@ export async function triggerAIReading(orderId) {
     const readingId = crypto.randomUUID();
     const accessToken = crypto.randomBytes(32).toString('hex');
 
+    // schema: id, order_id, user_id, access_token, question, cards_json, spread_type,
+    //   interpretation, interpretation_length, sections_json, summary, question_count, is_resolved, created_at
     db.prepare(`
-      INSERT INTO readings (id, order_id, user_id, access_token, question, cards_json, spread_type, interpretation, interpretation_length, sections_json, summary, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO readings (id, order_id, user_id, access_token, question, cards_json, spread_type, interpretation, interpretation_length, sections_json, summary, question_count, is_resolved, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       readingId,
       orderId,
@@ -522,6 +557,8 @@ export async function triggerAIReading(orderId) {
       content.length,
       JSON.stringify(sections),
       summary,
+      0,    // question_count（追问次数，解读生成时为 0）
+      0,    // is_resolved
       Date.now(),
     );
 
